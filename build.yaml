@@ -1,7 +1,7 @@
 ---
 name: "StreamFin IPTV"
 guid: "cdf3b2f9-ba0b-41f1-8ebc-e340588673ab"
-version: "1.0.2.0"
+version: "1.0.4.0"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 owner: "jackalgg"
@@ -14,8 +14,7 @@ description: >
   advertised the wrong one.
 category: "LiveTV"
 changelog: >
-  Fixes saving the provider after a successful connection. Paste the link,
-  choose categories, then Save and start.
+  Save and start confirms the save, then creates Live TV and the libraries.
 artifacts:
   - "Jellyfin.Plugin.StreamFin.dll"
 imageUrl: ""

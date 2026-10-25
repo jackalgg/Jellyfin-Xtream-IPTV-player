@@ -178,6 +178,51 @@ public class StreamFinController : ControllerBase
     }
 
     /// <summary>
+    /// Stores the settings page and reports that it stuck.
+    /// </summary>
+    /// <param name="configuration">The settings posted by the page.</param>
+    /// <response code="200">The save was attempted. The body says whether it stuck.</response>
+    /// <returns>Whether the settings were stored, and how many subscriptions that included.</returns>
+    /// <remarks>
+    /// Jellyfin's own plugin configuration endpoint answers with an empty 204. The dashboard client
+    /// treats that as neither success nor failure, so the page stopped after a good connection and
+    /// never created the libraries. This endpoint returns a JSON body the page can act on.
+    /// </remarks>
+    [HttpPost("Settings")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public ActionResult<SettingsSaveResponse> SaveSettings([FromBody] PluginConfiguration? configuration)
+    {
+        if (configuration is null)
+        {
+            return new SettingsSaveResponse { Saved = false, Message = "The settings could not be saved." };
+        }
+
+        var plugin = StreamFinPlugin.Instance;
+        if (plugin is null)
+        {
+            return new SettingsSaveResponse { Saved = false, Message = "StreamFin is not loaded. Restart Jellyfin and try again." };
+        }
+
+        Normalize(configuration);
+
+        try
+        {
+            plugin.UpdateConfiguration(configuration);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Could not save StreamFin settings");
+            return new SettingsSaveResponse { Saved = false, Message = "The settings could not be saved." };
+        }
+
+        return new SettingsSaveResponse
+        {
+            Saved = true,
+            ProviderCount = configuration.Providers.Length
+        };
+    }
+
+    /// <summary>
     /// Queues a full sync.
     /// </summary>
     /// <response code="204">The sync was queued.</response>
@@ -224,6 +269,32 @@ public class StreamFinController : ControllerBase
             _logger.LogError(ex, "Provisioning failed");
             return new ProvisionResponse { Success = false, Warnings = new[] { ex.Message } };
         }
+    }
+
+    private static void Normalize(PluginConfiguration configuration)
+    {
+        configuration.Providers ??= Array.Empty<ProviderOptions>();
+
+        foreach (var provider in configuration.Providers)
+        {
+            if (provider is null)
+            {
+                continue;
+            }
+
+            provider.LiveFilter ??= new CategoryFilter();
+            provider.MovieFilter ??= new CategoryFilter();
+            provider.SeriesFilter ??= new CategoryFilter();
+            Normalize(provider.LiveFilter);
+            Normalize(provider.MovieFilter);
+            Normalize(provider.SeriesFilter);
+        }
+    }
+
+    private static void Normalize(CategoryFilter filter)
+    {
+        filter.Categories ??= Array.Empty<string>();
+        filter.TitleExcludePatterns ??= Array.Empty<string>();
     }
 }
 
@@ -358,6 +429,27 @@ public class StatusResponse
     /// Gets or sets how many providers are enabled.
     /// </summary>
     public int EnabledProviderCount { get; set; }
+}
+
+/// <summary>
+/// The outcome of saving the settings page.
+/// </summary>
+public class SettingsSaveResponse
+{
+    /// <summary>
+    /// Gets or sets a value indicating whether the settings were written.
+    /// </summary>
+    public bool Saved { get; set; }
+
+    /// <summary>
+    /// Gets or sets how many subscriptions were stored.
+    /// </summary>
+    public int ProviderCount { get; set; }
+
+    /// <summary>
+    /// Gets or sets the reason a save failed.
+    /// </summary>
+    public string Message { get; set; } = string.Empty;
 }
 
 /// <summary>

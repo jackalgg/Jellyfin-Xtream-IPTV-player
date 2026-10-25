@@ -116,9 +116,12 @@ function post(path, body, query) {
 }
 
 function postNoContent(path) {
+    // dataType text makes the dashboard read an empty 204 body instead of leaving the
+    // connection open, which otherwise stalls the next request with no success and no error.
     return ApiClient.ajax({
         type: 'POST',
-        url: ApiClient.getUrl('StreamFin/' + path)
+        url: ApiClient.getUrl('StreamFin/' + path),
+        dataType: 'text'
     });
 }
 
@@ -533,68 +536,107 @@ export default function (view) {
         config.Providers = providers;
 
         Loading.show();
+        showProgress('Saving...');
 
-        return ApiClient.updatePluginConfiguration(PLUGIN_ID, config).then((result) => {
+        // Our own endpoint returns JSON. Jellyfin's plugin configuration endpoint returns an empty
+        // 204, which the dashboard neither accepts nor rejects, so Save looked like it did nothing.
+        return post('Settings', config).then((response) => {
             Loading.hide();
-            Dashboard.processPluginConfigurationUpdateResult(result);
-            return loadStatus();
+
+            if (!response || response.Saved !== true) {
+                showSaveResult(false, escapeHtml((response && response.Message) || 'The settings could not be saved.'));
+                return Promise.reject(new Error('save failed'));
+            }
+
+            return response;
         }, () => {
             Loading.hide();
-            Dashboard.alert({ title: 'StreamFin', message: 'The settings could not be saved.' });
+            showSaveResult(false, 'The settings could not be saved.');
             return Promise.reject(new Error('save failed'));
         });
     }
 
+    function asList(value) {
+        return Array.isArray(value) ? value : [];
+    }
+
+    function showProgress(html) {
+        const result = view.querySelector('#sfSaveResult');
+        result.innerHTML = '<div class="sfResult sfMuted">' + html + '</div>';
+        result.scrollIntoView({ block: 'nearest' });
+    }
+
+    function showSaveResult(ok, html) {
+        const result = view.querySelector('#sfSaveResult');
+        setResult(result, ok, html);
+        result.scrollIntoView({ block: 'nearest' });
+    }
+
     function describeProvision(response) {
         const lines = [];
+        const libraries = asList(response.LibrariesCreated);
+        const tuners = asList(response.TunersConfigured);
+        const guides = asList(response.GuidesConfigured);
+        const warnings = asList(response.Warnings);
 
-        if (response.LibrariesCreated.length) {
-            lines.push('Created ' + response.LibrariesCreated.map(escapeHtml).join(', ') + '.');
+        if (libraries.length) {
+            lines.push('Created ' + libraries.map(escapeHtml).join(', ') + '.');
         }
 
-        if (response.TunersConfigured.length) {
-            lines.push('Live TV tuner ready for '
-                + response.TunersConfigured.map(escapeHtml).join(', ') + '.');
+        if (tuners.length) {
+            lines.push('Live TV tuner ready for ' + tuners.map(escapeHtml).join(', ') + '.');
         }
 
-        if (response.GuidesConfigured.length) {
-            lines.push('Guide attached for '
-                + response.GuidesConfigured.map(escapeHtml).join(', ') + '.');
+        if (guides.length) {
+            lines.push('Guide attached for ' + guides.map(escapeHtml).join(', ') + '.');
         }
 
         if (!lines.length && response.Success) {
             lines.push('Libraries and Live TV were already set up.');
         }
 
-        response.Warnings.forEach((warning) => lines.push(escapeHtml(warning)));
+        warnings.forEach((warning) => lines.push(escapeHtml(warning)));
         lines.push('The first sync is queued. Films and shows appear as it finishes.');
         return lines;
     }
 
     function saveAndStart() {
-        const result = view.querySelector('#sfProvisionResult');
-
-        return save().then(() => {
-            result.innerHTML = '<div class="sfResult sfMuted">Creating Live TV and the libraries, then starting the sync...</div>';
+        return save().then((response) => {
+            showProgress('Saved ' + plural(response.ProviderCount, 'subscription')
+                + '. Creating Live TV and the libraries...');
             return post('Provision');
         }).then((response) => postNoContent('Sync').then(() => {
-            setResult(
-                result,
-                response.Success && !response.Warnings.length,
+            showSaveResult(
+                response.Success && asList(response.Warnings).length === 0,
                 describeProvision(response).map((line) => '<div>' + line + '</div>').join(''));
             return loadStatus();
         })).catch(() => {
+            const result = view.querySelector('#sfSaveResult');
             if (!result.querySelector('.sfBad')) {
-                setResult(result, false, 'Setup could not be finished. Test the connection, then try Save and start again.');
+                showSaveResult(false, 'Setup could not be finished. Test the connection, then try Save and start again.');
             }
         });
     }
 
-    view.querySelector('#sfForm').addEventListener('submit', (event) => {
+    let saving = false;
+
+    function onSave(event) {
         event.preventDefault();
-        saveAndStart();
-        return false;
-    });
+        if (saving) {
+            return;
+        }
+
+        saving = true;
+        saveAndStart().then(() => {
+            saving = false;
+        }, () => {
+            saving = false;
+        });
+    }
+
+    const form = view.querySelector('#sfForm');
+    form.addEventListener('submit', onSave);
+    form.querySelector('button[type="submit"]').addEventListener('click', onSave);
 
     view.querySelector('#sfAddProvider').addEventListener('click', () => {
         const provider = blankProvider(providers.length + 1);
