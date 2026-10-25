@@ -133,9 +133,9 @@
             <div class="verticalSection">
                 <h2 class="sectionTitle">StreamFin IPTV</h2>
                 <p class="sfMuted">
-                    Connect an Xtream Codes panel or an M3U playlist. Live channels land in Live TV with
-                    their guide attached, and films and shows become ordinary Jellyfin libraries with
-                    seasons, episodes, resume, and Next Up.
+                    Paste the link your provider sent, or type the server, username, and password.
+                    Save and start. Live TV, films, and shows are created for you. Films and shows
+                    are real Jellyfin libraries, so they play, resume, and show Next Up.
                 </p>
             </div>
 
@@ -166,8 +166,8 @@
                     </button>
                 </div>
 
-                <div class="verticalSection">
-                    <h2 class="sectionTitle">Library and sync</h2>
+                <details class="verticalSection">
+                    <summary class="sectionTitle">Library and sync</summary>
 
                     <div class="inputContainer">
                         <label class="inputLabel inputLabelUnfocused" for="sfLibraryRoot">
@@ -222,10 +222,10 @@
                         <input is="emby-checkbox" class="emby-checkbox" type="checkbox" id="sfPruneRemovedItems" />
                         <span>Remove items the provider no longer carries</span>
                     </label>
-                </div>
+                </details>
 
-                <div class="verticalSection">
-                    <h2 class="sectionTitle">Advanced</h2>
+                <details class="verticalSection">
+                    <summary class="sectionTitle">Advanced</summary>
 
                     <div class="sfRow">
                         <div class="inputContainer">
@@ -310,12 +310,16 @@
                         <input is="emby-checkbox" class="emby-checkbox" type="checkbox" id="sfVerboseLogging" />
                         <span>Log every item during a sync</span>
                     </label>
-                </div>
+                </details>
 
                 <div>
                     <button is="emby-button" type="submit" class="emby-button raised button-submit block">
-                        <span>Save</span>
+                        <span>Save and start</span>
                     </button>
+                    <div class="fieldDescription">
+                        Saves these settings, creates the Live TV tuner and the film and show libraries,
+                        then starts the first sync.
+                    </div>
                 </div>
             </form>
 
@@ -352,13 +356,18 @@
 
                         <div data-sf-when="Xtream">
                             <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused">Provider link</label>
+                                <input is="emby-input" class="emby-input" type="text" data-sf-paste
+                                       placeholder="http://example.com:8080/get.php?username=...&amp;password=..." />
+                                <div class="fieldDescription">
+                                    Paste the playlist or player link from your provider. The server, username,
+                                    and password are filled in from it.
+                                </div>
+                            </div>
+                            <div class="inputContainer">
                                 <label class="inputLabel inputLabelUnfocused">Server address</label>
                                 <input is="emby-input" class="emby-input" type="text" data-sf-field="ServerUrl"
                                        placeholder="http://example.com:8080" />
-                                <div class="fieldDescription">
-                                    Paste whatever your provider gave you. A full playlist link works too; the
-                                    host and port are taken from it.
-                                </div>
                             </div>
                             <div class="sfRow">
                                 <div class="inputContainer">

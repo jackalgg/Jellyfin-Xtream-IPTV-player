@@ -46,6 +46,59 @@ const GLOBAL_FIELDS = [
     { id: 'sfVerboseLogging', key: 'VerboseLogging', type: 'bool' }
 ];
 
+function blankProvider(index) {
+    return Object.assign({ Id: newProviderId() }, PROVIDER_DEFAULTS, {
+        Name: index === 1 ? 'My IPTV' : 'IPTV ' + index,
+        LiveFilter: { Mode: 'All', Categories: [], TitleExcludePatterns: [], MaxItemsPerCategory: 0 },
+        MovieFilter: { Mode: 'All', Categories: [], TitleExcludePatterns: [], MaxItemsPerCategory: 0 },
+        SeriesFilter: { Mode: 'All', Categories: [], TitleExcludePatterns: [], MaxItemsPerCategory: 0 }
+    });
+}
+
+function setField(host, key, value) {
+    const input = host.querySelector('[data-sf-field="' + key + '"]');
+    if (!input) {
+        return;
+    }
+
+    if (input.type === 'checkbox') {
+        input.checked = value !== false;
+    } else {
+        input.value = value == null ? '' : value;
+    }
+}
+
+function applyPastedLink(provider, host, raw) {
+    const text = (raw || '').trim();
+    if (!text) {
+        return false;
+    }
+
+    let url;
+    try {
+        url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? text : 'http://' + text);
+    } catch (error) {
+        return false;
+    }
+
+    const username = url.searchParams.get('username');
+    const password = url.searchParams.get('password');
+    if (!username && !password) {
+        return false;
+    }
+
+    provider.Kind = 'Xtream';
+    provider.ServerUrl = url.origin;
+    provider.Username = username || provider.Username || '';
+    provider.Password = password || provider.Password || '';
+
+    setField(host, 'Kind', provider.Kind);
+    setField(host, 'ServerUrl', provider.ServerUrl);
+    setField(host, 'Username', provider.Username);
+    setField(host, 'Password', provider.Password);
+    return true;
+}
+
 function newProviderId() {
     const bytes = new Uint8Array(16);
     crypto.getRandomValues(bytes);
@@ -324,6 +377,29 @@ export default function (view) {
             });
         });
 
+        const paste = host.querySelector('[data-sf-paste]');
+        if (paste) {
+            paste.addEventListener('change', () => {
+                if (!applyPastedLink(provider, host, paste.value)) {
+                    return;
+                }
+
+                paste.value = '';
+                applyKindVisibility(host, provider);
+                updateTitle(host, provider);
+            });
+        }
+
+        const serverUrl = host.querySelector('[data-sf-field="ServerUrl"]');
+        serverUrl.addEventListener('change', () => {
+            if (!applyPastedLink(provider, host, serverUrl.value)) {
+                return;
+            }
+
+            applyKindVisibility(host, provider);
+            updateTitle(host, provider);
+        });
+
         applyKindVisibility(host, provider);
         updateTitle(host, provider);
         providerList.appendChild(host);
@@ -347,9 +423,8 @@ export default function (view) {
         const empty = document.createElement('div');
         empty.className = 'sfEmpty';
         empty.setAttribute('data-sf-empty', '');
-        empty.innerHTML = '<p>No subscriptions yet.</p>'
-            + '<p class="sfMuted">Add one, test it, then save. StreamFin creates the libraries and the '
-            + 'Live TV tuner for you.</p>';
+        empty.innerHTML = '<p>No subscription yet.</p>'
+            + '<p class="sfMuted">Add one, paste the provider link, then choose Save and start.</p>';
         providerList.appendChild(empty);
     }
 
@@ -426,6 +501,9 @@ export default function (view) {
         return ApiClient.getPluginConfiguration(PLUGIN_ID).then((loaded) => {
             config = loaded;
             providers = (loaded.Providers || []).map((p) => Object.assign({}, PROVIDER_DEFAULTS, p));
+            if (!providers.length) {
+                providers.push(blankProvider(1));
+            }
 
             GLOBAL_FIELDS.forEach((field) => {
                 const input = view.querySelector('#' + field.id);
@@ -463,22 +541,63 @@ export default function (view) {
         }, () => {
             Loading.hide();
             Dashboard.alert({ title: 'StreamFin', message: 'The settings could not be saved.' });
+            return Promise.reject(new Error('save failed'));
+        });
+    }
+
+    function describeProvision(response) {
+        const lines = [];
+
+        if (response.LibrariesCreated.length) {
+            lines.push('Created ' + response.LibrariesCreated.map(escapeHtml).join(', ') + '.');
+        }
+
+        if (response.TunersConfigured.length) {
+            lines.push('Live TV tuner ready for '
+                + response.TunersConfigured.map(escapeHtml).join(', ') + '.');
+        }
+
+        if (response.GuidesConfigured.length) {
+            lines.push('Guide attached for '
+                + response.GuidesConfigured.map(escapeHtml).join(', ') + '.');
+        }
+
+        if (!lines.length && response.Success) {
+            lines.push('Libraries and Live TV were already set up.');
+        }
+
+        response.Warnings.forEach((warning) => lines.push(escapeHtml(warning)));
+        lines.push('The first sync is queued. Films and shows appear as it finishes.');
+        return lines;
+    }
+
+    function saveAndStart() {
+        const result = view.querySelector('#sfProvisionResult');
+
+        return save().then(() => {
+            result.innerHTML = '<div class="sfResult sfMuted">Creating Live TV and the libraries, then starting the sync...</div>';
+            return post('Provision');
+        }).then((response) => postNoContent('Sync').then(() => {
+            setResult(
+                result,
+                response.Success && !response.Warnings.length,
+                describeProvision(response).map((line) => '<div>' + line + '</div>').join(''));
+            return loadStatus();
+        })).catch(() => {
+            if (!result.querySelector('.sfBad')) {
+                setResult(result, false, 'Setup could not be finished. Test the connection, then try Save and start again.');
+            }
         });
     }
 
     view.querySelector('#sfForm').addEventListener('submit', (event) => {
         event.preventDefault();
-        save();
+        saveAndStart();
         return false;
     });
 
     view.querySelector('#sfAddProvider').addEventListener('click', () => {
-        const provider = Object.assign({ Id: newProviderId() }, PROVIDER_DEFAULTS, {
-            Name: 'IPTV ' + (providers.length + 1),
-            LiveFilter: { Mode: 'All', Categories: [], TitleExcludePatterns: [], MaxItemsPerCategory: 0 },
-            MovieFilter: { Mode: 'All', Categories: [], TitleExcludePatterns: [], MaxItemsPerCategory: 0 },
-            SeriesFilter: { Mode: 'All', Categories: [], TitleExcludePatterns: [], MaxItemsPerCategory: 0 }
-        });
+        const provider = blankProvider(providers.length + 1);
 
         providers.push(provider);
         renderEmptyState();
