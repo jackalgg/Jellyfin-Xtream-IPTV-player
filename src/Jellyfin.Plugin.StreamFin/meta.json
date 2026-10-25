@@ -1,8 +1,8 @@
 {
   "guid": "cdf3b2f9-ba0b-41f1-8ebc-e340588673ab",
   "name": "StreamFin IPTV",
-  "description": "Xtream Codes and M3U for Jellyfin. Paste a provider link and watch live TV, films, and series. Library import is optional.",
-  "overview": "Paste an Xtream or M3U link, open a category, and play it. Titles stream from the provider.",
+  "description": "A Jellyfin player for an Xtream Codes or M3U subscription you already have. StreamFin does not include channels.",
+  "overview": "Paste your own provider link and play it. StreamFin supplies the player only, not channels or a subscription.",
   "owner": "jackalgg",
   "category": "LiveTV",
   "imageUrl": ""

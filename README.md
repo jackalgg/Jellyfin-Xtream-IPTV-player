@@ -1,8 +1,14 @@
 # StreamFin IPTV
 
-StreamFin plays Xtream Codes and M3U in Jellyfin the way an IPTV player does. Paste the link from your provider, open a category, and watch live TV, films, and series.
+StreamFin is a player for Xtream Codes and M3U in Jellyfin. Paste the link from your own provider, open a category, and watch live TV, films, and series.
 
-Titles stream from the provider. Copying the catalog into Jellyfin libraries is optional and off unless you turn it on.
+Titles stream from that provider. Copying the catalog into Jellyfin libraries is optional and off unless you turn it on.
+
+## Disclaimer
+
+StreamFin is only a player. It does not provide, host, or sell channels, streams, playlists, films, or series. It includes no subscription and no content of its own.
+
+You bring the Xtream or M3U link from your own provider. You are responsible for that account, for complying with the law and with your provider's terms, and for having the right to watch what you play.
 
 ## Requirements
 

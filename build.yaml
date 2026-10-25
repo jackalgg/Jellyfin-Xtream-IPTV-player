@@ -5,10 +5,10 @@ version: "1.0.8.0"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 owner: "jackalgg"
-overview: "Paste an Xtream or M3U link, open a category, and play it."
+overview: "Paste your own provider link and play it. StreamFin supplies the player only."
 description: >
-  Xtream Codes and M3U for Jellyfin. Paste a provider link and watch live TV,
-  films, and series. Library import is optional.
+  A Jellyfin player for an Xtream Codes or M3U subscription you already have.
+  StreamFin does not include channels or a subscription.
 category: "LiveTV"
 changelog: >
   Films and episodes try the panel's HLS stream, then remux just the title
