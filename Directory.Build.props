@@ -1,0 +1,21 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <!--
+      CA1848/CA2254/CA1873 concern logging ceremony: source-generated LoggerMessage delegates and
+      pre-checked log levels. The messages here are low frequency and the arguments cheap.
+      CA1304/CA1305/CA1307/CA1310 are culture suppressions; InvariantGlobalization is on.
+      CA1859/CA1863 trade readable return types for micro-optimizations.
+      CA1711 objects to type names ending in "Stream", which is exactly what an IPTV stream is.
+    -->
+    <NoWarn>$(NoWarn);CA1848;CA2254;CA1873;CA1304;CA1305;CA1307;CA1310;CA1859;CA1863;CA1711</NoWarn>
+  </PropertyGroup>
+</Project>

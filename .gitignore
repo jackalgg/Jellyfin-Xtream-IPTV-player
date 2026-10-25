@@ -1,0 +1,15 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+TestResults/
+artifacts/
+*.nupkg
+*.snupkg
+.DS_Store
+thumbs.db

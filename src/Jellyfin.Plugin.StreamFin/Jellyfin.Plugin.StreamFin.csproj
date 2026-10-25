@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net9.0;net10.0</TargetFrameworks>
+    <AssemblyName>Jellyfin.Plugin.StreamFin</AssemblyName>
+    <RootNamespace>Jellyfin.Plugin.StreamFin</RootNamespace>
+    <Authors>StreamFin contributors</Authors>
+    <Description>Seamless Xtream Codes and M3U IPTV for Jellyfin: Live TV with EPG, plus real Movie and Series libraries.</Description>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <AssemblyVersion>$(PluginAssemblyVersion)</AssemblyVersion>
+    <FileVersion>$(PluginAssemblyVersion)</FileVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(PluginAssemblyVersion)' == ''">
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+  </PropertyGroup>
+
+  <!--
+    Jellyfin 10.11.x runs on .NET 9 and Jellyfin 12.x runs on .NET 10. A plugin assembly must be
+    compiled against the same Jellyfin major line it will be loaded into, so each target framework
+    pins the matching Jellyfin reference assemblies.
+  -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
+    <PackageReference Include="Jellyfin.Controller" Version="10.11.11" />
+    <PackageReference Include="Jellyfin.Model" Version="10.11.11" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="Jellyfin.Controller" Version="12.3.0" />
+    <PackageReference Include="Jellyfin.Model" Version="12.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Configuration\Web\*.html" />
+    <EmbeddedResource Include="Configuration\Web\*.js" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Jellyfin.Plugin.StreamFin.Tests" />
+  </ItemGroup>
+
+</Project>

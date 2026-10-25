@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>StreamFin IPTV</title>
+</head>
+<body>
+<div id="streamFinPage" data-role="page" class="page type-interior pluginConfigurationPage"
+     data-controller="__plugin/configPage.js">
+    <div data-role="content">
+        <div class="content-primary">
+
+            <style>
+                #streamFinPage .sfStatus {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(10em, 1fr));
+                    gap: 1em;
+                    margin: 0 0 1.5em;
+                }
+
+                #streamFinPage .sfStat {
+                    background: rgba(255, 255, 255, 0.05);
+                    border-radius: 0.3em;
+                    padding: 0.85em 1em;
+                }
+
+                #streamFinPage .sfStatValue {
+                    font-size: 1.6em;
+                    font-weight: 500;
+                    line-height: 1.2;
+                }
+
+                #streamFinPage .sfStatLabel {
+                    opacity: 0.7;
+                    font-size: 0.85em;
+                    text-transform: uppercase;
+                    letter-spacing: 0.04em;
+                }
+
+                #streamFinPage .sfProvider {
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 0.3em;
+                    margin-bottom: 1.25em;
+                    overflow: hidden;
+                }
+
+                #streamFinPage .sfProviderHead {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75em;
+                    padding: 0.6em 0.75em;
+                    background: rgba(255, 255, 255, 0.05);
+                }
+
+                #streamFinPage .sfProviderTitle {
+                    flex: 1 1 auto;
+                    min-width: 0;
+                    font-weight: 500;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+
+                #streamFinPage .sfProviderBody {
+                    padding: 0.5em 1em 1em;
+                }
+
+                #streamFinPage .sfRow {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0 1.5em;
+                }
+
+                #streamFinPage .sfRow > * {
+                    flex: 1 1 14em;
+                }
+
+                #streamFinPage .sfContentGrid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(16em, 1fr));
+                    gap: 1em;
+                }
+
+                #streamFinPage .sfContentCard {
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border-radius: 0.3em;
+                    padding: 0.5em 0.9em 0.9em;
+                }
+
+                #streamFinPage .sfResult {
+                    border-radius: 0.3em;
+                    padding: 0.7em 0.9em;
+                    margin: 0.75em 0 0;
+                }
+
+                #streamFinPage .sfResult.sfOk {
+                    background: rgba(82, 183, 100, 0.15);
+                    border-left: 3px solid #52b764;
+                }
+
+                #streamFinPage .sfResult.sfBad {
+                    background: rgba(229, 82, 82, 0.15);
+                    border-left: 3px solid #e55252;
+                }
+
+                #streamFinPage .sfMuted {
+                    opacity: 0.75;
+                }
+
+                #streamFinPage .sfEmpty {
+                    border: 1px dashed rgba(255, 255, 255, 0.2);
+                    border-radius: 0.3em;
+                    padding: 2em 1em;
+                    text-align: center;
+                }
+
+                #streamFinPage .sfActions {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.5em;
+                    align-items: center;
+                }
+
+                #streamFinPage .sfChip {
+                    display: inline-block;
+                    border-radius: 1em;
+                    padding: 0.15em 0.7em;
+                    font-size: 0.8em;
+                    background: rgba(255, 255, 255, 0.12);
+                }
+            </style>
+
+            <div class="verticalSection">
+                <h2 class="sectionTitle">StreamFin IPTV</h2>
+                <p class="sfMuted">
+                    Connect an Xtream Codes panel or an M3U playlist. Live channels land in Live TV with
+                    their guide attached, and films and shows become ordinary Jellyfin libraries with
+                    seasons, episodes, resume, and Next Up.
+                </p>
+            </div>
+
+            <div class="verticalSection">
+                <h2 class="sectionTitle">Status</h2>
+                <div id="sfStatus" class="sfStatus"></div>
+                <div id="sfStatusDetail"></div>
+                <div class="sfActions">
+                    <button is="emby-button" type="button" id="sfSyncNow" class="emby-button raised">
+                        <span>Sync now</span>
+                    </button>
+                    <button is="emby-button" type="button" id="sfProvision" class="emby-button raised">
+                        <span>Set up libraries and Live TV</span>
+                    </button>
+                    <button is="emby-button" type="button" id="sfRefreshStatus" class="emby-button raised">
+                        <span>Refresh</span>
+                    </button>
+                </div>
+                <div id="sfProvisionResult"></div>
+            </div>
+
+            <form id="sfForm">
+                <div class="verticalSection">
+                    <h2 class="sectionTitle">Subscriptions</h2>
+                    <div id="sfProviders"></div>
+                    <button is="emby-button" type="button" id="sfAddProvider" class="emby-button raised">
+                        <span>Add a subscription</span>
+                    </button>
+                </div>
+
+                <div class="verticalSection">
+                    <h2 class="sectionTitle">Library and sync</h2>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="sfLibraryRoot">
+                            Generated library folder
+                        </label>
+                        <input is="emby-input" class="emby-input" type="text" id="sfLibraryRoot" />
+                        <div class="fieldDescription">
+                            Where the stream pointer files are written. Leave blank to keep them inside the
+                            server's data folder. Give Jellyfin read and write access to this path.
+                        </div>
+                    </div>
+
+                    <div class="sfRow">
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="sfSyncIntervalHours">
+                                Hours between syncs
+                            </label>
+                            <input is="emby-input" class="emby-input" type="number" id="sfSyncIntervalHours" min="1" max="168" step="1" />
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="sfGuideDays">
+                                Days of guide to keep
+                            </label>
+                            <input is="emby-input" class="emby-input" type="number" id="sfGuideDays" min="1" max="14" step="1" />
+                        </div>
+                    </div>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" class="emby-checkbox" type="checkbox" id="sfAutoProvision" />
+                        <span>Create and maintain the Jellyfin libraries, tuner, and guide automatically</span>
+                    </label>
+                    <div class="fieldDescription checkboxFieldDescription">
+                        Turn this off if you would rather add the libraries and the tuner by hand in Jellyfin's
+                        own settings.
+                    </div>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" class="emby-checkbox" type="checkbox" id="sfWriteNfoMetadata" />
+                        <span>Save the provider's titles, plots, and artwork alongside each item</span>
+                    </label>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" class="emby-checkbox" type="checkbox" id="sfEnableInternetMetadata" />
+                        <span>Also look titles up online</span>
+                    </label>
+                    <div class="fieldDescription checkboxFieldDescription">
+                        Fills in cast, ratings, and better artwork from TMDB and friends. The provider's own
+                        details are used where both exist.
+                    </div>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" class="emby-checkbox" type="checkbox" id="sfPruneRemovedItems" />
+                        <span>Remove items the provider no longer carries</span>
+                    </label>
+                </div>
+
+                <div class="verticalSection">
+                    <h2 class="sectionTitle">Advanced</h2>
+
+                    <div class="sfRow">
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="sfRequestTimeoutSeconds">
+                                Request timeout (seconds)
+                            </label>
+                            <input is="emby-input" class="emby-input" type="number" id="sfRequestTimeoutSeconds" min="10" max="600" step="5" />
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="sfCacheMinutes">
+                                Cache channel lists for (minutes)
+                            </label>
+                            <input is="emby-input" class="emby-input" type="number" id="sfCacheMinutes" min="1" max="1440" step="5" />
+                        </div>
+                    </div>
+
+                    <div class="sfRow">
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="sfSeriesConcurrency">
+                                Parallel series lookups
+                            </label>
+                            <input is="emby-input" class="emby-input" type="number" id="sfSeriesConcurrency" min="1" max="16" step="1" />
+                            <div class="fieldDescription">
+                                Each show needs its own request for the episode list. Raise this to sync faster,
+                                lower it if the panel starts refusing connections.
+                            </div>
+                        </div>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="sfMovieDetailBudget">
+                                Film details per sync
+                            </label>
+                            <input is="emby-input" class="emby-input" type="number" id="sfMovieDetailBudget" min="0" max="20000" step="50" />
+                            <div class="fieldDescription">
+                                Plots and cast need one request per film, so each sync enriches this many new
+                                titles and remembers them. A large catalogue fills in over several runs.
+                            </div>
+                        </div>
+                    </div>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" class="emby-checkbox" type="checkbox" id="sfFetchMovieDetails" />
+                        <span>Fetch plots and cast for films from the panel</span>
+                    </label>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" class="emby-checkbox" type="checkbox" id="sfProxyPlayback" />
+                        <span>Play films and shows through StreamFin (recommended)</span>
+                    </label>
+                    <div class="fieldDescription checkboxFieldDescription">
+                        Other Jellyfin IPTV plugins hand the panel URL to ffmpeg, which then fails
+                        because the panel wanted a browser User-Agent or a different file extension.
+                        StreamFin plays the title itself, the way TiviMate or VLC would, then hands
+                        the bytes to Jellyfin. Turn this off only if you want the raw panel URL in
+                        the generated files.
+                    </div>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" class="emby-checkbox" type="checkbox" id="sfPreferDirectPlay" />
+                        <span>Allow clients to direct-play on-demand titles</span>
+                    </label>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" class="emby-checkbox" type="checkbox" id="sfResolveStreamRedirects" />
+                        <span>Follow a channel's redirects before playback starts</span>
+                    </label>
+                    <div class="fieldDescription checkboxFieldDescription">
+                        Most panels bounce a channel to a nearby server. Resolving that first is usually the
+                        difference between a channel that starts instantly and one that times out.
+                    </div>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" class="emby-checkbox" type="checkbox" id="sfAllowUntrustedCertificates" />
+                        <span>Accept an untrusted HTTPS certificate from the provider</span>
+                    </label>
+                    <div class="fieldDescription checkboxFieldDescription">
+                        Only needed when a provider's certificate is self-signed or expired and nothing loads at
+                        all. While this is on, anyone able to intercept the connection can read your
+                        subscription details.
+                    </div>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" class="emby-checkbox" type="checkbox" id="sfVerboseLogging" />
+                        <span>Log every item during a sync</span>
+                    </label>
+                </div>
+
+                <div>
+                    <button is="emby-button" type="submit" class="emby-button raised button-submit block">
+                        <span>Save</span>
+                    </button>
+                </div>
+            </form>
+
+            <template id="sfProviderTemplate">
+                <div class="sfProvider" data-sf-provider>
+                    <div class="sfProviderHead">
+                        <label class="checkboxContainer" style="margin: 0;">
+                            <input is="emby-checkbox" class="emby-checkbox" type="checkbox" data-sf-field="Enabled" />
+                            <span class="sfMuted">On</span>
+                        </label>
+                        <span class="sfProviderTitle" data-sf-title></span>
+                        <button is="emby-button" type="button" class="emby-button raised" data-sf-action="toggle">
+                            <span data-sf-toggle-label>Hide</span>
+                        </button>
+                        <button is="emby-button" type="button" class="emby-button raised" data-sf-action="remove">
+                            <span>Remove</span>
+                        </button>
+                    </div>
+                    <div class="sfProviderBody" data-sf-body>
+                        <div class="sfRow">
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused">Name</label>
+                                <input is="emby-input" class="emby-input" type="text" data-sf-field="Name" />
+                                <div class="fieldDescription">Names the generated libraries and the tuner.</div>
+                            </div>
+                            <div class="selectContainer">
+                                <label class="selectLabel">Source</label>
+                                <select is="emby-select" class="emby-select" data-sf-field="Kind">
+                                    <option value="Xtream">Xtream Codes panel</option>
+                                    <option value="M3u">M3U playlist</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div data-sf-when="Xtream">
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused">Server address</label>
+                                <input is="emby-input" class="emby-input" type="text" data-sf-field="ServerUrl"
+                                       placeholder="http://example.com:8080" />
+                                <div class="fieldDescription">
+                                    Paste whatever your provider gave you. A full playlist link works too; the
+                                    host and port are taken from it.
+                                </div>
+                            </div>
+                            <div class="sfRow">
+                                <div class="inputContainer">
+                                    <label class="inputLabel inputLabelUnfocused">Username</label>
+                                    <input is="emby-input" class="emby-input" type="text" data-sf-field="Username"
+                                           autocomplete="off" />
+                                </div>
+                                <div class="inputContainer">
+                                    <label class="inputLabel inputLabelUnfocused">Password</label>
+                                    <input is="emby-input" class="emby-input" type="password" data-sf-field="Password"
+                                           autocomplete="new-password" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div data-sf-when="M3u">
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused">Playlist address</label>
+                                <input is="emby-input" class="emby-input" type="text" data-sf-field="PlaylistUrl"
+                                       placeholder="http://example.com/get.php?username=...&amp;type=m3u_plus" />
+                                <div class="fieldDescription">
+                                    An http address or a path to a file on the server.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused">Guide address (XMLTV)</label>
+                            <input is="emby-input" class="emby-input" type="text" data-sf-field="EpgUrl" />
+                            <div class="fieldDescription" data-sf-epg-hint></div>
+                        </div>
+
+                        <h3>What to import</h3>
+                        <div class="sfContentGrid">
+                            <div class="sfContentCard">
+                                <label class="checkboxContainer">
+                                    <input is="emby-checkbox" class="emby-checkbox" type="checkbox" data-sf-field="EnableLiveTv" />
+                                    <span>Live TV</span>
+                                </label>
+                                <div data-sf-filter="LiveFilter"></div>
+                            </div>
+                            <div class="sfContentCard">
+                                <label class="checkboxContainer">
+                                    <input is="emby-checkbox" class="emby-checkbox" type="checkbox" data-sf-field="EnableMovies" />
+                                    <span>Films</span>
+                                </label>
+                                <div data-sf-filter="MovieFilter"></div>
+                            </div>
+                            <div class="sfContentCard">
+                                <label class="checkboxContainer">
+                                    <input is="emby-checkbox" class="emby-checkbox" type="checkbox" data-sf-field="EnableSeries" />
+                                    <span>Shows</span>
+                                </label>
+                                <div data-sf-filter="SeriesFilter"></div>
+                            </div>
+                        </div>
+
+                        <h3>Playback</h3>
+                        <div class="sfRow">
+                            <div class="selectContainer">
+                                <label class="selectLabel">Live stream format</label>
+                                <select is="emby-select" class="emby-select" data-sf-field="LiveStreamFormat">
+                                    <option value="MpegTs">MPEG-TS (recommended)</option>
+                                    <option value="Hls">HLS</option>
+                                </select>
+                                <div class="fieldDescription">
+                                    MPEG-TS starts faster. Switch to HLS only if your provider serves it better.
+                                </div>
+                            </div>
+                            <div class="inputContainer">
+                                <label class="inputLabel inputLabelUnfocused">Simultaneous streams</label>
+                                <input is="emby-input" class="emby-input" type="number" data-sf-field="MaxConcurrentStreams"
+                                       min="0" max="64" step="1" />
+                                <div class="fieldDescription">
+                                    Your subscription's connection limit, or 0 to let the provider enforce it.
+                                    Setting it means Jellyfin refuses the extra channel with a clear message
+                                    instead of a failed stream.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused">User agent</label>
+                            <input is="emby-input" class="emby-input" type="text" data-sf-field="UserAgent"
+                                   placeholder="Leave blank for the default browser agent" />
+                            <div class="fieldDescription">
+                                Some panels only answer a specific agent. Blank works for nearly all of them.
+                            </div>
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused">Referer</label>
+                            <input is="emby-input" class="emby-input" type="text" data-sf-field="Referer"
+                                   placeholder="Leave blank to use the panel address" />
+                            <div class="fieldDescription">
+                                A few panels refuse playback without a matching Referer. Blank uses the
+                                server address above.
+                            </div>
+                        </div>
+
+                        <h3>Channel numbers</h3>
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" class="emby-checkbox" type="checkbox" data-sf-field="UseProviderChannelNumbers" />
+                            <span>Use the channel numbers the provider supplies</span>
+                        </label>
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused">Channel number prefix</label>
+                            <input is="emby-input" class="emby-input" type="text" data-sf-field="ChannelNumberPrefix"
+                                   placeholder="e.g. 1" />
+                            <div class="fieldDescription">
+                                Keeps two subscriptions from interleaving in the guide. With a prefix of 1,
+                                channel 24 becomes 1.24.
+                            </div>
+                        </div>
+
+                        <div class="sfActions" style="margin-top: 1em;">
+                            <button is="emby-button" type="button" class="emby-button raised" data-sf-action="test">
+                                <span>Test connection</span>
+                            </button>
+                        </div>
+                        <div data-sf-test-result></div>
+                    </div>
+                </div>
+            </template>
+
+            <template id="sfFilterTemplate">
+                <div>
+                    <div class="selectContainer">
+                        <label class="selectLabel">Categories</label>
+                        <select is="emby-select" class="emby-select" data-sf-filter-field="Mode">
+                            <option value="All">Import everything</option>
+                            <option value="Include">Only the categories I pick</option>
+                            <option value="Exclude">Everything except the categories I pick</option>
+                        </select>
+                    </div>
+                    <div data-sf-category-picker hidden>
+                        <div class="sfActions" style="margin-bottom: 0.5em;">
+                            <button is="emby-button" type="button" class="emby-button raised" data-sf-action="load-categories">
+                                <span>Load categories</span>
+                            </button>
+                            <span class="sfMuted" data-sf-category-status></span>
+                        </div>
+                        <select is="emby-select" class="emby-select" multiple size="8" data-sf-filter-field="Categories"></select>
+                        <div class="fieldDescription">
+                            Load the list to choose from what the provider actually offers. Hold Ctrl or Cmd to
+                            pick more than one.
+                        </div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused">Skip titles matching</label>
+                        <textarea is="emby-textarea" class="emby-textarea" rows="2" data-sf-filter-field="TitleExcludePatterns"></textarea>
+                        <div class="fieldDescription">
+                            One pattern per line, matched against the title. Plain words work: <code>4K</code>
+                            or <code>XXX</code>.
+                        </div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused">Limit per category</label>
+                        <input is="emby-input" class="emby-input" type="number" min="0" max="100000" step="10"
+                               data-sf-filter-field="MaxItemsPerCategory" />
+                        <div class="fieldDescription">0 means no limit.</div>
+                    </div>
+                </div>
+            </template>
+
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "guid": "cdf3b2f9-ba0b-41f1-8ebc-e340588673ab",
+  "name": "StreamFin IPTV",
+  "description": "Xtream Codes and M3U IPTV for Jellyfin that actually plays movies and series.",
+  "overview": "Connect an Xtream Codes panel or an M3U playlist. Live channels land in Live TV with their guide attached, and films and shows become ordinary Jellyfin libraries. Playback goes through StreamFin the way a regular IPTV player would, so titles start instead of dying in ffprobe.",
+  "owner": "jackalgg",
+  "category": "LiveTV",
+  "imageUrl": ""
+}
