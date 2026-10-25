@@ -70,6 +70,22 @@
         "sourceUrl": "https://github.com/jackalgg/Jellyfin-Xtream-IPTV-player/releases/download/v1.0.6/streamfin-iptv_1.0.7.0.zip",
         "checksum": "c452e284473a83f47b1d800f3985b5a8",
         "timestamp": "2026-10-25T12:47:07Z"
+      },
+      {
+        "version": "1.0.8.0",
+        "changelog": "Jellyfin 10.11. Films and episodes try the panel's HLS stream, then remux just the title you clicked. The catalog is not imported.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/jackalgg/Jellyfin-Xtream-IPTV-player/releases/download/v1.0.8/streamfin-iptv_1.0.8.0.zip",
+        "checksum": "7ddca82a8d1bb9c1d1bd3e284182f5a4",
+        "timestamp": "2026-10-25T13:16:06Z"
+      },
+      {
+        "version": "1.0.9.0",
+        "changelog": "Jellyfin 12. Films and episodes try the panel's HLS stream, then remux just the title you clicked. The catalog is not imported.",
+        "targetAbi": "12.0.0.0",
+        "sourceUrl": "https://github.com/jackalgg/Jellyfin-Xtream-IPTV-player/releases/download/v1.0.8/streamfin-iptv_1.0.9.0.zip",
+        "checksum": "cf87d7861148119819ecd3ce270de45c",
+        "timestamp": "2026-10-25T13:16:06Z"
       }
     ]
   }
