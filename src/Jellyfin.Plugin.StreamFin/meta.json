@@ -1,8 +1,8 @@
 {
   "guid": "cdf3b2f9-ba0b-41f1-8ebc-e340588673ab",
   "name": "StreamFin IPTV",
-  "description": "Paste an Xtream or M3U link and watch it immediately. Library import is optional.",
-  "overview": "StreamFin plays Xtream Codes and M3U like an IPTV player. Open a category and the title starts. Copying the whole catalog into Jellyfin libraries is optional, so setup does not stall on a mass import.",
+  "description": "Xtream Codes and M3U for Jellyfin. Paste a provider link and watch live TV, films, and series. Library import is optional.",
+  "overview": "Paste an Xtream or M3U link, open a category, and play it. Titles stream from the provider.",
   "owner": "jackalgg",
   "category": "LiveTV",
   "imageUrl": ""

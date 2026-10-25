@@ -1,43 +1,62 @@
 # StreamFin IPTV
 
-Xtream Codes and M3U for Jellyfin. Paste a provider link and watch live TV, films, and shows immediately. Nothing is copied into libraries unless you ask for that.
+StreamFin plays Xtream Codes and M3U in Jellyfin the way an IPTV player does. Paste the link from your provider, open a category, and watch live TV, films, and series.
+
+Titles stream from the provider. Copying the catalog into Jellyfin libraries is optional and off unless you turn it on.
+
+## Requirements
+
+- Jellyfin 10.11 or Jellyfin 12
+- An Xtream Codes subscription or an M3U playlist
+
+The catalog installs the build that matches the server.
 
 ## Install
 
 1. Open the admin dashboard and go to **Plugins**.
-2. Open the **Repositories** tab.
-3. Click **+**.
-4. Name: `StreamFin`
-5. Repository URL:
+2. Open the **Repositories** tab and click **+**.
+3. Name: `StreamFin`
+4. Repository URL:
 
    ```text
    https://raw.githubusercontent.com/jackalgg/Jellyfin-Xtream-IPTV-player/main/repository.json
    ```
 
-6. Save.
-7. Open the **Catalog** tab.
-8. Under **Live TV**, choose **StreamFin IPTV**.
-9. Click **Install**.
-10. Restart Jellyfin.
-
-Use the **10.11** build on Jellyfin 10.11, and the **12** build on Jellyfin 12. The catalog offers the one that matches the server.
+5. Save.
+6. Open the **Catalog** tab.
+7. Under **Live TV**, choose **StreamFin IPTV** and click **Install**.
+8. Restart Jellyfin.
 
 ## Watch
 
 1. Open **Dashboard → StreamFin IPTV**.
-2. Paste the playlist or player link your provider sent. The server, username, and password are filled in from it. You can also type those three fields yourself.
-3. Choose **Save**.
-4. Open **Watch**.
+2. Paste the link your provider sent. These all work:
+   - `http://example.com:8080/get.php?username=...&password=...`
+   - `http://example.com:8080/player_api.php?username=...&password=...`
+   - an M3U playlist URL
+3. The server, username, and password fill in from an Xtream link. You can type those three fields yourself instead.
+4. Choose **Save**.
+5. Choose **Watch**.
 
-Categories load from the provider. Opening one fetches only that category, then a title plays when you click it. An M3U playlist is downloaded once; after that, groups open immediately.
+Open a category, then click a title.
 
-Live channels try HLS first and fall back to MPEG-TS. Films and episodes try the panel's HLS stream first. When the panel only has the movie file, Jellyfin remuxes that one file so the browser can play it. Nothing else is downloaded.
+- A live channel starts playing.
+- A film starts playing.
+- A series opens its episodes. Click an episode to play it.
 
-## Library copy
+Search and **More** stay inside the category you opened. StreamFin asks the provider for that category when you open it, so a large subscription does not have to download every title first. An M3U playlist is downloaded once; after that, its groups open immediately.
 
-Leave **Copy the catalog into Jellyfin libraries** off. That copy writes every film and episode into Jellyfin and is what makes setup stall. Turn it on only if you want those libraries, resume, and Next Up, then choose **Sync now**.
+## Libraries
 
-Library files are written inside Jellyfin's data folder. Leave **Generated library folder** blank unless you want them somewhere else.
+Leave **Copy the catalog into Jellyfin libraries** unchecked. Watch already plays the provider.
+
+Turn that option on only when you want the titles inside Jellyfin's own movie and series libraries, with resume and Next Up. Then choose **Sync now**. On a large provider that copy takes a while, because every film and episode is written out.
+
+Generated files stay in Jellyfin's data folder. Set **Generated library folder** only when you want them somewhere else.
+
+## Update
+
+Open **Dashboard → Plugins**, update **StreamFin IPTV**, and restart Jellyfin.
 
 ## License
 

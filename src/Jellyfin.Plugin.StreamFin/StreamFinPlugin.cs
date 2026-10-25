@@ -44,7 +44,7 @@ public class StreamFinPlugin : BasePlugin<PluginConfiguration>, IHasWebPages
 
     /// <inheritdoc />
     public override string Description =>
-        "Plays Xtream Codes and M3U like an IPTV player. Open a category and stream it. Copying the catalog into libraries is optional.";
+        "Xtream Codes and M3U for Jellyfin. Paste a provider link and watch live TV, films, and series. Library import is optional.";
 
     /// <summary>
     /// Gets the directory the generated <c>.strm</c> and <c>.nfo</c> files are written to.
