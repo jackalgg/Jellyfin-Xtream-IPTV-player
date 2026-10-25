@@ -17,6 +17,7 @@ export default function (view) {
 
     let hlsPlayer = null;
     let tsPlayer = null;
+    let nativeError = null;
     let searchTimer = 0;
     let playGeneration = 0;
     const scripts = {};
@@ -185,6 +186,11 @@ export default function (view) {
             tsPlayer = null;
         }
 
+        if (nativeError) {
+            video.removeEventListener('error', nativeError);
+            nativeError = null;
+        }
+
         video.pause();
         video.removeAttribute('src');
         video.load();
@@ -192,18 +198,31 @@ export default function (view) {
 
     function playNative(url) {
         return new Promise((resolve, reject) => {
-            const onError = () => {
-                video.removeEventListener('error', onError);
-                reject(new Error('native'));
+            if (nativeError) {
+                video.removeEventListener('error', nativeError);
+            }
+
+            const finish = (ok) => {
+                if (nativeError) {
+                    video.removeEventListener('error', nativeError);
+                    nativeError = null;
+                }
+
+                if (ok) {
+                    resolve();
+                } else {
+                    reject(new Error('native'));
+                }
             };
 
-            video.addEventListener('error', onError);
+            nativeError = () => finish(false);
+            video.addEventListener('error', nativeError);
             video.src = url;
             const started = video.play();
             if (started && started.then) {
-                started.then(resolve, reject);
+                started.then(() => finish(true), () => finish(false));
             } else {
-                resolve();
+                finish(true);
             }
         });
     }
@@ -242,68 +261,199 @@ export default function (view) {
         }));
     }
 
-    function playTs(url) {
+    function playTs(url, live) {
         return loadScript('streamfin-mpegts.js').then(() => new Promise((resolve, reject) => {
             if (!window.mpegts || !mpegts.isSupported || !mpegts.isSupported()) {
                 reject(new Error('ts'));
                 return;
             }
 
+            const config = {
+                enableWorker: false,
+                lazyLoad: false
+            };
+            if (!live) {
+                config.liveBufferLatencyChasing = false;
+            }
+
             const playerTs = mpegts.createPlayer({
                 type: 'mse',
                 isLive: true,
                 url: url
-            }, {
-                enableWorker: false,
-                lazyLoad: false
-            });
+            }, config);
             tsPlayer = playerTs;
-            playerTs.on(mpegts.Events.ERROR, function () {
+
+            let settled = false;
+            const onPlaying = () => succeed();
+            const succeed = () => {
+                if (settled) {
+                    return;
+                }
+
+                settled = true;
+                video.removeEventListener('playing', onPlaying);
+                resolve();
+            };
+            const fail = () => {
+                if (settled) {
+                    return;
+                }
+
+                settled = true;
+                video.removeEventListener('playing', onPlaying);
                 reject(new Error('ts'));
-            });
+            };
+
+            playerTs.on(mpegts.Events.ERROR, fail);
+            if (!live) {
+                video.addEventListener('playing', onPlaying);
+                if (mpegts.Events.MEDIA_INFO) {
+                    playerTs.on(mpegts.Events.MEDIA_INFO, succeed);
+                }
+            }
+
             playerTs.attachMediaElement(video);
             playerTs.load();
             const started = playerTs.play();
-            if (started && started.then) {
-                started.then(resolve, resolve);
-            } else {
-                resolve();
+            if (live) {
+                if (started && started.then) {
+                    started.then(succeed, succeed);
+                } else {
+                    succeed();
+                }
+            } else if (started && started.then) {
+                started.then(() => { /* a movie waits until media info or the attempt times out */ }, fail);
             }
         }));
     }
 
+    function showOpening(text) {
+        error.classList.add('sfwWait');
+        error.textContent = text || 'Opening…';
+    }
+
+    function clearStatus() {
+        error.classList.remove('sfwWait');
+        error.textContent = '';
+    }
+
+    function withTimeout(promise, ms) {
+        return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('timeout')), ms);
+            promise.then((value) => {
+                clearTimeout(timer);
+                resolve(value);
+            }, (reason) => {
+                clearTimeout(timer);
+                reject(reason);
+            });
+        });
+    }
+
     function play(item, label) {
-        const primary = mediaUrl(pick(item, 'PlayUrl'));
-        const fallback = mediaUrl(pick(item, 'FallbackPlayUrl'));
-        const container = String(pick(item, 'Container') || '');
         const live = pick(item, 'Live') === true;
         const generation = ++playGeneration;
 
         stopPlayback();
         player.hidden = false;
         now.textContent = label || pick(item, 'Name') || pick(item, 'Title') || '';
-        error.textContent = '';
+        showOpening();
 
         const failed = () => {
             if (generation !== playGeneration) {
                 return;
             }
 
+            error.classList.remove('sfwWait');
             error.textContent = live
                 ? 'This channel did not start. The provider may be offline, or the browser cannot play this format.'
-                : 'This title did not start in the browser. The panel may be serving a format the browser cannot play.';
+                : 'This title did not start. The provider may be offline.';
         };
 
-        if (!primary) {
+        const started = () => {
+            if (generation === playGeneration) {
+                clearStatus();
+            }
+        };
+
+        if (live) {
+            const primary = mediaUrl(pick(item, 'PlayUrl'));
+            const fallback = mediaUrl(pick(item, 'FallbackPlayUrl'));
+            if (!primary) {
+                failed();
+                return;
+            }
+
+            playHls(primary)
+                .catch(() => (fallback ? playTs(fallback, true) : Promise.reject(new Error('hls'))))
+                .then(started, failed);
+            return;
+        }
+
+        const attempts = [];
+        const push = (url, container) => {
+            if (!url || attempts.some((attempt) => attempt.url === url)) {
+                return;
+            }
+
+            attempts.push({ url: url, container: container || '' });
+        };
+
+        const primary = mediaUrl(pick(item, 'PlayUrl'));
+        const primaryContainer = String(pick(item, 'Container') || '');
+        const fallback = mediaUrl(pick(item, 'FallbackPlayUrl'));
+        const fallbackContainer = String(pick(item, 'FallbackContainer') || '');
+        const remux = mediaUrl(pick(item, 'RemuxUrl'));
+        const nativeFirst = primaryContainer === 'mp4' || primaryContainer === 'm4v' || primaryContainer === 'webm';
+        if (nativeFirst) {
+            push(primary, primaryContainer);
+            push(fallback, fallbackContainer || 'm3u8');
+            push(remux, 'ts');
+        } else {
+            push(primary, primaryContainer || 'm3u8');
+            push(fallback, fallbackContainer);
+            push(remux, 'ts');
+        }
+
+        if (!attempts.length) {
             failed();
             return;
         }
 
-        const start = (live || container === 'm3u8')
-            ? playHls(primary).catch(() => (fallback ? playTs(fallback) : Promise.reject(new Error('hls'))))
-            : playNative(primary);
+        const run = (index) => {
+            if (generation !== playGeneration) {
+                return;
+            }
 
-        start.catch(failed);
+            if (index > 0) {
+                stopPlayback();
+            }
+
+            const attempt = attempts[index];
+            if (attempt.url.indexOf('r=1') >= 0) {
+                showOpening('Starting the file…');
+            }
+
+            const container = attempt.container;
+            const starter = (container === 'm3u8' || container === 'm3u')
+                ? playHls(attempt.url)
+                : (container === 'ts' ? playTs(attempt.url, false) : playNative(attempt.url));
+            const wait = attempt.url.indexOf('r=1') >= 0 ? 45000 : 12000;
+            withTimeout(starter, wait).then(started, () => {
+                if (generation !== playGeneration) {
+                    return;
+                }
+
+                if (index + 1 < attempts.length) {
+                    run(index + 1);
+                    return;
+                }
+
+                failed();
+            });
+        };
+
+        run(0);
     }
 
     function markSelected(id) {

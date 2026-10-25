@@ -440,38 +440,27 @@ public class BrowseService
         }
 
         var streamId = id.ToString(CultureInfo.InvariantCulture);
-        string upstream;
-        PlaybackKind kind;
-        string container;
-        if (BrowseListing.IsAbsoluteHttp(stream.DirectSource))
+        var links = LinksForXtream(
+            provider,
+            PlaybackKind.Movie,
+            streamId,
+            stream.DirectSource,
+            stream.ContainerExtension,
+            extension => new XtreamUrlBuilder(provider).MovieStream(id, extension));
+        if (links is null)
         {
-            upstream = stream.DirectSource!.Trim();
-            kind = PlaybackKind.Url;
-            container = BrowseListing.PlaybackContainer(upstream, live: false);
-        }
-        else
-        {
-            var urls = new XtreamUrlBuilder(provider);
-            if (!urls.IsConfigured)
-            {
-                return null;
-            }
-
-            // Ask for mp4 first. The play endpoint still walks mkv and ts when the panel has no mp4.
-            container = "mp4";
-            upstream = urls.MovieStream(id, container);
-            kind = PlaybackKind.Movie;
+            return null;
         }
 
-        return new BrowseItem
+        var item = new BrowseItem
         {
             Id = streamId,
             Name = CleanName(stream.Name, "Untitled"),
             Poster = BrowseListing.SafePoster(stream.Icon),
-            Rating = stream.Rating,
-            Container = container,
-            PlayUrl = Play(provider, kind, streamId, upstream, container)
+            Rating = stream.Rating
         };
+        Apply(item, links.Value);
+        return item;
     }
 
     private static BrowseItem? ToSeries(XtreamSeries series)
@@ -500,30 +489,21 @@ public class BrowseService
         }
 
         var episodeId = episode.Id.Trim();
-        string upstream;
-        PlaybackKind kind;
-        string container;
-        if (BrowseListing.IsAbsoluteHttp(episode.DirectSource))
+        var links = LinksForXtream(
+            provider,
+            PlaybackKind.Series,
+            episodeId,
+            episode.DirectSource,
+            episode.ContainerExtension,
+            extension => new XtreamUrlBuilder(provider).EpisodeStream(episodeId, extension));
+        if (links is null)
         {
-            upstream = episode.DirectSource!.Trim();
-            kind = PlaybackKind.Url;
-            container = BrowseListing.PlaybackContainer(upstream, live: false);
-        }
-        else
-        {
-            var urls = new XtreamUrlBuilder(provider);
-            if (!urls.IsConfigured)
-            {
-                return null;
-            }
-
-            container = "mp4";
-            upstream = urls.EpisodeStream(episodeId, container);
-            kind = PlaybackKind.Series;
+            return null;
         }
 
         var number = episode.EpisodeNumber ?? 0;
         var title = string.IsNullOrWhiteSpace(episode.Title) ? "Episode " + number.ToString(CultureInfo.InvariantCulture) : episode.Title.Trim();
+        var signed = links.Value;
         return new BrowseEpisode
         {
             Id = episodeId,
@@ -532,8 +512,11 @@ public class BrowseService
             Number = number,
             Poster = BrowseListing.SafePoster(episode.Info?.Image),
             Plot = string.IsNullOrWhiteSpace(episode.Info?.EffectivePlot) ? null : episode.Info!.EffectivePlot!.Trim(),
-            PlayUrl = Play(provider, kind, episodeId, upstream, container),
-            Container = container
+            PlayUrl = signed.PlayUrl,
+            FallbackPlayUrl = signed.FallbackPlayUrl,
+            FallbackContainer = signed.FallbackContainer,
+            RemuxUrl = signed.RemuxUrl,
+            Container = signed.Container
         };
     }
 
@@ -545,7 +528,6 @@ public class BrowseService
         }
 
         var url = entry.Url.Trim();
-        var container = BrowseListing.PlaybackContainer(url, live);
         var id = BrowseListing.ShortId(url);
         int? number = null;
         if (int.TryParse(entry.TvgChannelNumber, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
@@ -553,8 +535,36 @@ public class BrowseService
             number = parsed;
         }
 
+        if (!live)
+        {
+            // A playlist file is already a concrete address. Do not invent a sibling .m3u8 on a CDN.
+            var links = LinksForOnDemand(
+                provider,
+                PlaybackKind.Url,
+                id,
+                url,
+                StreamUrlCandidates.GetExtension(url),
+                alternateExtensions: false,
+                buildXtream: null);
+            if (links is null)
+            {
+                return null;
+            }
+
+            var item = new BrowseItem
+            {
+                Id = id,
+                Name = CleanName(entry.Name, "Untitled"),
+                Poster = BrowseListing.SafePoster(entry.TvgLogo),
+                ChannelNumber = number
+            };
+            Apply(item, links.Value);
+            return item;
+        }
+
+        var container = BrowseListing.PlaybackContainer(url, live: true);
         string? fallback = null;
-        if (live && container == "m3u8")
+        if (container == "m3u8")
         {
             // The same address with a transport-stream container is what mpegts.js can play
             // when the playlist is not actually HLS.
@@ -567,11 +577,136 @@ public class BrowseService
             Name = CleanName(entry.Name, "Untitled"),
             Poster = BrowseListing.SafePoster(entry.TvgLogo),
             ChannelNumber = number,
-            Live = live,
+            Live = true,
             Container = container,
             PlayUrl = Play(provider, PlaybackKind.Url, id, url, container),
             FallbackPlayUrl = fallback
         };
+    }
+
+    private SignedOnDemand? LinksForXtream(
+        ProviderOptions provider,
+        PlaybackKind kind,
+        string streamId,
+        string? directSource,
+        string? containerExtension,
+        Func<string, string> buildXtream)
+    {
+        if (BrowseListing.IsAbsoluteHttp(directSource))
+        {
+            var advertised = StreamUrlCandidates.GetExtension(directSource) ?? containerExtension;
+            return LinksForOnDemand(
+                provider,
+                PlaybackKind.Url,
+                streamId,
+                directSource,
+                advertised,
+                alternateExtensions: true,
+                buildXtream: null);
+        }
+
+        if (!new XtreamUrlBuilder(provider).IsConfigured)
+        {
+            return null;
+        }
+
+        return LinksForOnDemand(
+            provider,
+            kind,
+            streamId,
+            directUrl: null,
+            containerExtension,
+            alternateExtensions: true,
+            buildXtream);
+    }
+
+    private SignedOnDemand? LinksForOnDemand(
+        ProviderOptions provider,
+        PlaybackKind kind,
+        string streamId,
+        string? directUrl,
+        string? advertised,
+        bool alternateExtensions,
+        Func<string, string>? buildXtream)
+    {
+        var targets = BrowseListing.Targets(advertised, alternateExtensions);
+
+        string? Resolve(string? extension)
+        {
+            if (string.IsNullOrEmpty(extension))
+            {
+                return null;
+            }
+
+            if (BrowseListing.IsAbsoluteHttp(directUrl))
+            {
+                return BrowseListing.DirectAddress(directUrl!, extension);
+            }
+
+            return buildXtream?.Invoke(extension);
+        }
+
+        string Sign(string upstream, string container, bool remux)
+        {
+            var path = _links.BuildRelativePlayUrl(provider, kind, streamId, upstream, container);
+            return remux ? path + "&b=1&r=1" : path + "&b=1";
+        }
+
+        string? play = null;
+        var containerName = targets.PlayContainer;
+        if (targets.PlayExtension is not null)
+        {
+            var upstream = Resolve(targets.PlayExtension);
+            if (!string.IsNullOrWhiteSpace(upstream))
+            {
+                play = Sign(upstream, targets.PlayContainer, remux: false);
+            }
+        }
+
+        string? fallback = null;
+        string? fallbackContainer = null;
+        if (targets.FallbackExtension is not null)
+        {
+            var upstream = Resolve(targets.FallbackExtension);
+            if (!string.IsNullOrWhiteSpace(upstream))
+            {
+                fallback = Sign(upstream, targets.FallbackContainer ?? targets.FallbackExtension, remux: false);
+                fallbackContainer = targets.FallbackContainer;
+            }
+        }
+
+        string? remuxUrl = null;
+        if (targets.RemuxExtension is not null)
+        {
+            var upstream = Resolve(targets.RemuxExtension);
+            if (!string.IsNullOrWhiteSpace(upstream))
+            {
+                remuxUrl = Sign(upstream, "ts", remux: true);
+            }
+        }
+
+        if (string.IsNullOrEmpty(play))
+        {
+            if (string.IsNullOrEmpty(remuxUrl))
+            {
+                return null;
+            }
+
+            play = remuxUrl;
+            containerName = "ts";
+            remuxUrl = null;
+        }
+
+        return new SignedOnDemand(play, containerName, fallback, fallbackContainer, remuxUrl);
+    }
+
+    private static void Apply(BrowseItem item, SignedOnDemand links)
+    {
+        item.PlayUrl = links.PlayUrl;
+        item.Container = links.Container;
+        item.FallbackPlayUrl = links.FallbackPlayUrl;
+        item.FallbackContainer = links.FallbackContainer;
+        item.RemuxUrl = links.RemuxUrl;
     }
 
     private string Play(ProviderOptions provider, PlaybackKind kind, string streamId, string upstream, string container)
@@ -717,4 +852,11 @@ public class BrowseService
     }
 
     private readonly record struct Slice<T>(IReadOnlyList<T> Items, bool FullCatalog);
+
+    private readonly record struct SignedOnDemand(
+        string PlayUrl,
+        string Container,
+        string? FallbackPlayUrl,
+        string? FallbackContainer,
+        string? RemuxUrl);
 }

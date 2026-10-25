@@ -1,13 +1,16 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.StreamFin.Configuration;
 using Jellyfin.Plugin.StreamFin.Playback;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
@@ -27,8 +30,12 @@ namespace Jellyfin.Plugin.StreamFin.Api;
 [Route("StreamFin/Play")]
 public class StreamFinPlaybackController : ControllerBase
 {
+    private const int PeekBytes = 1024;
+    private const int MaxPlaylistBytes = 4 * 1024 * 1024;
+
     private readonly PlaybackService _playback;
     private readonly PlaybackLinkFactory _links;
+    private readonly FfmpegRemuxer _remuxer;
     private readonly ILogger<StreamFinPlaybackController> _logger;
 
     /// <summary>
@@ -36,14 +43,17 @@ public class StreamFinPlaybackController : ControllerBase
     /// </summary>
     /// <param name="playback">The playback service.</param>
     /// <param name="links">The playback URL factory.</param>
+    /// <param name="remuxer">The remuxer used when the browser cannot play the file.</param>
     /// <param name="logger">The logger.</param>
     public StreamFinPlaybackController(
         PlaybackService playback,
         PlaybackLinkFactory links,
+        FfmpegRemuxer remuxer,
         ILogger<StreamFinPlaybackController> logger)
     {
         _playback = playback;
         _links = links;
+        _remuxer = remuxer;
         _logger = logger;
     }
 
@@ -99,6 +109,33 @@ public class StreamFinPlaybackController : ControllerBase
 
         var range = Request.Headers[HeaderNames.Range].FirstOrDefault();
         var headOnly = HttpMethods.IsHead(Request.Method);
+        var browser = string.Equals(Request.Query["b"].FirstOrDefault(), "1", StringComparison.Ordinal);
+        var remux = string.Equals(Request.Query["r"].FirstOrDefault(), "1", StringComparison.Ordinal);
+
+        if (remux)
+        {
+            if (headOnly)
+            {
+                Response.StatusCode = StatusCodes.Status200OK;
+                Response.ContentType = "video/mp2t";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(parsed.UpstreamUrl))
+            {
+                Response.StatusCode = StatusCodes.Status404NotFound;
+                return;
+            }
+
+            await _remuxer.WriteMpegTsAsync(provider, parsed.UpstreamUrl, Response, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        if (browser && !headOnly)
+        {
+            await PlayBrowserAsync(provider, parsed, range, cancellationToken).ConfigureAwait(false);
+            return;
+        }
 
         using var upstream = await _playback
             .OpenAsync(provider, parsed.Kind, parsed.StreamId, parsed.Container, parsed.UpstreamUrl, range, headOnly, cancellationToken)
@@ -138,6 +175,161 @@ public class StreamFinPlaybackController : ControllerBase
         {
             await stream.CopyToAsync(Response.Body, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private async Task PlayBrowserAsync(
+        ProviderOptions provider,
+        ParsedPlayUrl parsed,
+        string? range,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(parsed.UpstreamUrl))
+        {
+            Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        using var opened = await _playback
+            .OpenDirectAsync(provider, parsed.UpstreamUrl, range, PlaybackService.BrowserHeaderTimeout, cancellationToken)
+            .ConfigureAwait(false);
+        if (opened is null)
+        {
+            Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        var upstream = opened.Response;
+        opened.CancelBodyAfter(PlaybackService.BrowserHeaderTimeout);
+        Stream body;
+        try
+        {
+            body = await upstream.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        await using (body.ConfigureAwait(false))
+        {
+            var prefix = new byte[PeekBytes];
+            int read;
+            try
+            {
+                read = await ReadPrefixAsync(body, prefix, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                Response.StatusCode = StatusCodes.Status404NotFound;
+                return;
+            }
+
+            var sample = prefix.AsMemory(0, read);
+            var mediaType = upstream.Content.Headers.ContentType?.MediaType;
+            var partial = upstream.StatusCode == HttpStatusCode.PartialContent;
+            var accepted = PlaybackSniff.IsPlaylist(sample.Span)
+                || (partial && !PlaybackSniff.IsTextDocument(sample.Span) && read > 0)
+                || PlaybackSniff.Accepts(parsed.Container, mediaType, sample.Span);
+            if (!accepted)
+            {
+                _logger.LogDebug(
+                    "{Provider}: browser rejected {Kind} {StreamId} because the body was not {Container}",
+                    provider.Name,
+                    parsed.Kind,
+                    parsed.StreamId,
+                    parsed.Container);
+                Response.StatusCode = StatusCodes.Status404NotFound;
+                return;
+            }
+
+            opened.CancelBodyAfter(Timeout.InfiniteTimeSpan);
+            DisableBuffering(Response);
+
+            if (PlaybackSniff.IsPlaylist(sample.Span))
+            {
+                var playlist = await ReadPlaylistAsync(body, sample, cancellationToken).ConfigureAwait(false);
+                if (playlist is null)
+                {
+                    Response.StatusCode = StatusCodes.Status404NotFound;
+                    return;
+                }
+
+                var playlistUrl = upstream.RequestMessage?.RequestUri?.ToString() ?? parsed.UpstreamUrl;
+                var requestPath = Request.PathBase.ToUriComponent() + Request.Path.ToUriComponent();
+                Response.StatusCode = StatusCodes.Status200OK;
+                Response.ContentType = "application/vnd.apple.mpegurl";
+                await Response.WriteAsync(
+                    _playback.RewritePlaylist(provider, playlist, playlistUrl, requestPath),
+                    cancellationToken).ConfigureAwait(false);
+                return;
+            }
+
+            CopyResponseHeaders(upstream, Response);
+            Response.ContentType = PlaybackSniff.ContentTypeFor(parsed.Container, sample.Span);
+            Response.StatusCode = (int)upstream.StatusCode;
+            await Response.Body.WriteAsync(sample, cancellationToken).ConfigureAwait(false);
+            await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+            await body.CopyToAsync(Response.Body, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task<int> ReadPrefixAsync(Stream stream, Memory<byte> buffer, CancellationToken cancellationToken)
+    {
+        var read = 0;
+        while (read < buffer.Length)
+        {
+            var count = await stream.ReadAsync(buffer[read..], cancellationToken).ConfigureAwait(false);
+            if (count == 0)
+            {
+                break;
+            }
+
+            read += count;
+            if (read >= 64)
+            {
+                break;
+            }
+        }
+
+        return read;
+    }
+
+    private static async Task<string?> ReadPlaylistAsync(Stream stream, ReadOnlyMemory<byte> prefix, CancellationToken cancellationToken)
+    {
+        using var copy = new MemoryStream();
+        copy.Write(prefix.Span);
+        var remaining = MaxPlaylistBytes - prefix.Length;
+        var buffer = new byte[16 * 1024];
+        while (remaining > 0)
+        {
+            var count = await stream.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, remaining)), cancellationToken)
+                .ConfigureAwait(false);
+            if (count == 0)
+            {
+                break;
+            }
+
+            copy.Write(buffer, 0, count);
+            remaining -= count;
+        }
+
+        if (remaining == 0)
+        {
+            var extra = new byte[1];
+            if (await stream.ReadAsync(extra, cancellationToken).ConfigureAwait(false) > 0)
+            {
+                return null;
+            }
+        }
+
+        return Encoding.UTF8.GetString(copy.GetBuffer(), 0, (int)copy.Length);
+    }
+
+    private static void DisableBuffering(HttpResponse response)
+    {
+        var feature = response.HttpContext.Features.Get<IHttpResponseBodyFeature>();
+        feature?.DisableBuffering();
     }
 
     private static void CopyResponseHeaders(HttpResponseMessage upstream, HttpResponse response)

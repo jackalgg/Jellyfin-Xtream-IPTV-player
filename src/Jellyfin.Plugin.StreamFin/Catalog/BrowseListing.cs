@@ -193,6 +193,109 @@ internal static class BrowseListing
     }
 
     /// <summary>
+    /// Decides how the browser should open one film or episode.
+    /// </summary>
+    /// <param name="advertised">The container the panel advertised, such as <c>mkv</c> or <c>mp4</c>.</param>
+    /// <returns>Which addresses are worth opening.</returns>
+    /// <remarks>
+    /// A browser can start HLS and MP4. It cannot start the MKV files most panels use. Trying those
+    /// other extensions on the panel is what makes a click sit there: the panel often never answers
+    /// a format it does not have. HLS is attempted only as its own address, and MKV is remuxed
+    /// locally instead of being downloaded into a library.
+    /// </remarks>
+    public static OnDemandPlayback ForOnDemand(string? advertised)
+    {
+        var extension = StreamUrlCandidates.NormalizeExtension(advertised);
+        if (string.IsNullOrEmpty(extension))
+        {
+            extension = "mkv";
+        }
+
+        return extension switch
+        {
+            "m3u8" or "m3u" => new OnDemandPlayback("m3u8", false, null, false),
+            "mp4" or "m4v" or "webm" => new OnDemandPlayback(extension, true, extension, true),
+            "ts" => new OnDemandPlayback("ts", true, "ts", false),
+            _ => new OnDemandPlayback(extension, true, null, true)
+        };
+    }
+
+    /// <summary>
+    /// Chooses the addresses Watch should sign for one film or episode.
+    /// </summary>
+    /// <param name="advertised">The container the panel advertised.</param>
+    /// <param name="alternateExtensions">Whether a sibling <c>.m3u8</c> is worth a short try. Playlist files are not rewritten.</param>
+    /// <returns>The containers to sign. A missing play container means the remux address is the only one.</returns>
+    public static OnDemandTargets Targets(string? advertised, bool alternateExtensions)
+    {
+        var plan = ForOnDemand(advertised);
+        if (plan.SourceExtension is "m3u8")
+        {
+            return new OnDemandTargets("m3u8", "m3u8", null, null, null);
+        }
+
+        string? hls = plan.TryHls && alternateExtensions ? "m3u8" : null;
+        var native = plan.NativeExtension;
+        string? remux = plan.Remux ? plan.SourceExtension : null;
+
+        if (native is "mp4" or "m4v" or "webm")
+        {
+            return new OnDemandTargets(native, native, hls, hls is null ? null : "m3u8", remux);
+        }
+
+        if (hls is not null)
+        {
+            var fallback = native == "ts" ? "ts" : null;
+            return new OnDemandTargets("m3u8", "m3u8", fallback, fallback, remux);
+        }
+
+        if (native == "ts")
+        {
+            return new OnDemandTargets("ts", "ts", null, null, null);
+        }
+
+        return new OnDemandTargets(null, "ts", null, null, remux);
+    }
+
+    /// <summary>
+    /// Resolves one on-demand container against a direct file address.
+    /// </summary>
+    /// <param name="directUrl">The absolute file address.</param>
+    /// <param name="extension">The container being requested.</param>
+    /// <returns>The address to open. An extensionless file is left alone unless a playlist sibling was asked for.</returns>
+    public static string DirectAddress(string directUrl, string extension)
+    {
+        ArgumentNullException.ThrowIfNull(directUrl);
+        ArgumentNullException.ThrowIfNull(extension);
+
+        var direct = directUrl.Trim();
+        var current = StreamUrlCandidates.NormalizeExtension(StreamUrlCandidates.GetExtension(direct));
+        var wanted = StreamUrlCandidates.NormalizeExtension(extension) ?? extension;
+
+        if (current is null)
+        {
+            if (wanted is "m3u8" or "m3u")
+            {
+                return StreamUrlCandidates.ReplaceExtension(direct, wanted);
+            }
+
+            return direct;
+        }
+
+        if ((current is "m3u" or "m3u8") && (wanted is "m3u" or "m3u8"))
+        {
+            return direct;
+        }
+
+        if (string.Equals(current, wanted, StringComparison.OrdinalIgnoreCase))
+        {
+            return direct;
+        }
+
+        return StreamUrlCandidates.ReplaceExtension(direct, wanted);
+    }
+
+    /// <summary>
     /// Picks the container the browser should try first for an address.
     /// </summary>
     /// <param name="url">The stream address.</param>
@@ -219,3 +322,31 @@ internal static class BrowseListing
         return string.IsNullOrEmpty(extension) ? "mp4" : extension;
     }
 }
+
+/// <summary>
+/// How Watch should open one on-demand title.
+/// </summary>
+/// <param name="SourceExtension">The container the panel actually has.</param>
+/// <param name="TryHls">Whether a sibling <c>.m3u8</c> address is worth a short try.</param>
+/// <param name="NativeExtension">A container the browser can play directly, or <c>null</c>.</param>
+/// <param name="Remux">Whether Jellyfin should remux the real file when the browser cannot open it.</param>
+internal readonly record struct OnDemandPlayback(
+    string SourceExtension,
+    bool TryHls,
+    string? NativeExtension,
+    bool Remux);
+
+/// <summary>
+/// The containers Watch should sign for one film or episode.
+/// </summary>
+/// <param name="PlayExtension">The file extension of the first address, or <c>null</c> when only a remux can be played.</param>
+/// <param name="PlayContainer">The container the browser should use for the first address.</param>
+/// <param name="FallbackExtension">The file extension of the second address, or <c>null</c>.</param>
+/// <param name="FallbackContainer">The container the browser should use for the second address, or <c>null</c>.</param>
+/// <param name="RemuxExtension">The real file to remux, or <c>null</c> when no remux is needed.</param>
+internal readonly record struct OnDemandTargets(
+    string? PlayExtension,
+    string PlayContainer,
+    string? FallbackExtension,
+    string? FallbackContainer,
+    string? RemuxExtension);

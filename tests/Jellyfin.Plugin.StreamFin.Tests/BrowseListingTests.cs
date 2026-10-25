@@ -87,6 +87,46 @@ public class BrowseListingTests
         Assert.Equal("../../url/prov/x?c=ts&u=abc", link);
     }
 
+    [Theory]
+    [InlineData(null, true, "m3u8", "m3u8", null, null, "mkv")]
+    [InlineData("mkv", true, "m3u8", "m3u8", null, null, "mkv")]
+    [InlineData("MKV", false, null, "ts", null, null, "mkv")]
+    [InlineData("mp4", true, "mp4", "mp4", "m3u8", "m3u8", "mp4")]
+    [InlineData("mp4", false, "mp4", "mp4", null, null, "mp4")]
+    [InlineData("m3u8", true, "m3u8", "m3u8", null, null, null)]
+    [InlineData(".m3u", false, "m3u8", "m3u8", null, null, null)]
+    [InlineData("ts", true, "m3u8", "m3u8", "ts", "ts", null)]
+    [InlineData("ts", false, "ts", "ts", null, null, null)]
+    [InlineData("avi", true, "m3u8", "m3u8", null, null, "avi")]
+    [InlineData("webm", false, "webm", "webm", null, null, "webm")]
+    public void Targets_opens_a_browser_stream_before_the_file(
+        string? advertised,
+        bool alternate,
+        string? play,
+        string playContainer,
+        string? fallback,
+        string? fallbackContainer,
+        string? remux)
+    {
+        var targets = BrowseListing.Targets(advertised, alternate);
+
+        Assert.Equal(play, targets.PlayExtension);
+        Assert.Equal(playContainer, targets.PlayContainer);
+        Assert.Equal(fallback, targets.FallbackExtension);
+        Assert.Equal(fallbackContainer, targets.FallbackContainer);
+        Assert.Equal(remux, targets.RemuxExtension);
+    }
+
+    [Fact]
+    public void DirectAddress_does_not_rename_the_file_it_was_given()
+    {
+        Assert.Equal("http://cdn.example/a.mkv", BrowseListing.DirectAddress("http://cdn.example/a.mkv", "mkv"));
+        Assert.Equal("http://cdn.example/a.m3u8", BrowseListing.DirectAddress("http://cdn.example/a.mkv", "m3u8"));
+        Assert.Equal("http://cdn.example/file", BrowseListing.DirectAddress("http://cdn.example/file", "mkv"));
+        Assert.Equal("http://cdn.example/file.m3u8", BrowseListing.DirectAddress("http://cdn.example/file", "m3u8"));
+        Assert.Equal("http://cdn.example/show.m3u", BrowseListing.DirectAddress("http://cdn.example/show.m3u", "m3u8"));
+    }
+
     [Fact]
     public void ShortId_is_stable()
     {

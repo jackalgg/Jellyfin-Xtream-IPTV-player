@@ -49,6 +49,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<SyncStateStore>();
         serviceCollection.AddSingleton<PlaybackLinkFactory>();
         serviceCollection.AddSingleton<PlaybackService>();
+        serviceCollection.AddSingleton<FfmpegRemuxer>();
         serviceCollection.AddSingleton<CatalogService>();
         serviceCollection.AddSingleton<BrowseService>();
         serviceCollection.AddSingleton<XmltvCache>();

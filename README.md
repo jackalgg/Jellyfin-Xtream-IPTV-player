@@ -31,7 +31,7 @@ Use the **10.11** build on Jellyfin 10.11, and the **12** build on Jellyfin 12. 
 
 Categories load from the provider. Opening one fetches only that category, then a title plays when you click it. An M3U playlist is downloaded once; after that, groups open immediately.
 
-Live channels try HLS first and fall back to MPEG-TS. Films and episodes play in the browser when the panel serves a format the browser understands. Playback sends a player User-Agent and tries `mp4`, `mkv`, and `ts` when the panel advertises the wrong file type.
+Live channels try HLS first and fall back to MPEG-TS. Films and episodes try the panel's HLS stream first. When the panel only has the movie file, Jellyfin remuxes that one file so the browser can play it. Nothing else is downloaded.
 
 ## Library copy
 

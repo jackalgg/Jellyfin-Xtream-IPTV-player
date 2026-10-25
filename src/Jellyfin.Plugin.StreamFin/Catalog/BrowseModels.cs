@@ -111,6 +111,16 @@ public class BrowseItem
     public string? FallbackPlayUrl { get; set; }
 
     /// <summary>
+    /// Gets or sets the container <see cref="FallbackPlayUrl"/> asks for.
+    /// </summary>
+    public string? FallbackContainer { get; set; }
+
+    /// <summary>
+    /// Gets or sets a signed path that remuxes the real file into MPEG-TS for the browser.
+    /// </summary>
+    public string? RemuxUrl { get; set; }
+
+    /// <summary>
     /// Gets or sets the container the first play path asks for, such as <c>m3u8</c>, <c>ts</c>, or <c>mp4</c>.
     /// </summary>
     public string Container { get; set; } = string.Empty;
@@ -194,9 +204,24 @@ public class BrowseEpisode
     public string PlayUrl { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets a second signed play path.
+    /// </summary>
+    public string? FallbackPlayUrl { get; set; }
+
+    /// <summary>
+    /// Gets or sets the container <see cref="FallbackPlayUrl"/> asks for.
+    /// </summary>
+    public string? FallbackContainer { get; set; }
+
+    /// <summary>
+    /// Gets or sets a signed path that remuxes the real file into MPEG-TS for the browser.
+    /// </summary>
+    public string? RemuxUrl { get; set; }
+
+    /// <summary>
     /// Gets or sets the container the play path asks for.
     /// </summary>
-    public string Container { get; set; } = "mp4";
+    public string Container { get; set; } = "m3u8";
 }
 
 /// <summary>

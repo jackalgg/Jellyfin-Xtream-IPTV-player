@@ -140,6 +140,85 @@ public class PlaybackService
     }
 
     /// <summary>
+    /// How long a browser playback request waits for the panel to send headers.
+    /// </summary>
+    /// <remarks>
+    /// A panel that does not have the requested container often never answers. The browser tries
+    /// the next address, so this stays short. Library playback does not use it.
+    /// </remarks>
+    public static readonly TimeSpan BrowserHeaderTimeout = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// Opens one upstream address and does not try any other container.
+    /// </summary>
+    /// <param name="provider">The owning provider.</param>
+    /// <param name="url">The exact address to open.</param>
+    /// <param name="rangeHeader">The client's Range header, when seeking.</param>
+    /// <param name="headerTimeout">How long to wait for response headers.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The upstream response, which the caller owns, or <c>null</c> when it did not answer.</returns>
+    public async Task<OpenedMedia?> OpenDirectAsync(
+        ProviderOptions provider,
+        string url,
+        string? rangeHeader,
+        TimeSpan headerTimeout,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        ArgumentException.ThrowIfNullOrWhiteSpace(url);
+
+        if (!BrowseListing.IsAbsoluteHttp(url))
+        {
+            return null;
+        }
+
+        var client = _httpClientFactory.CreateClient(HttpClientName);
+        var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(headerTimeout);
+        try
+        {
+            var response = await SendAsync(client, provider, url, rangeHeader, headOnly: false, timeout.Token)
+                .ConfigureAwait(false);
+            if (!IsUsable(response))
+            {
+                response.Dispose();
+                timeout.Dispose();
+                _logger.LogDebug(
+                    "{Provider} rejected a direct play of {Url} with HTTP {Status}",
+                    provider.Name,
+                    Redact(provider, url),
+                    (int)response.StatusCode);
+                return null;
+            }
+
+            // Headers arrived. Keep the body tied to the caller's cancellation, not the header timer.
+            timeout.CancelAfter(Timeout.InfiniteTimeSpan);
+            return new OpenedMedia(response, timeout);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            timeout.Dispose();
+            _logger.LogDebug("{Provider} did not send headers for {Url} before the browser timeout", provider.Name, Redact(provider, url));
+            return null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException)
+        {
+            timeout.Dispose();
+            _logger.LogDebug(
+                "{Provider} could not open {Url}: {Reason}",
+                provider.Name,
+                Redact(provider, url),
+                ex.GetType().Name);
+            return null;
+        }
+        catch
+        {
+            timeout.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Rewrites an HLS playlist so every segment also goes through StreamFin.
     /// </summary>
     /// <param name="provider">The owning provider.</param>
