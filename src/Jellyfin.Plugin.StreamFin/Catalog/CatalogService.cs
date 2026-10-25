@@ -259,24 +259,13 @@ public class CatalogService
 
         var client = CreateXtreamClient();
 
+        // Category names only. Counting titles means downloading the entire movie or series
+        // catalog, which is the stall an IPTV player never pays.
         var categories = contentType switch
         {
             "movies" => await client.GetVodCategoriesAsync(provider, cancellationToken).ConfigureAwait(false),
             "series" => await client.GetSeriesCategoriesAsync(provider, cancellationToken).ConfigureAwait(false),
             _ => await client.GetLiveCategoriesAsync(provider, cancellationToken).ConfigureAwait(false)
-        };
-
-        var counts = contentType switch
-        {
-            "movies" => (await client.GetVodStreamsAsync(provider, null, cancellationToken).ConfigureAwait(false))
-                .GroupBy(s => s.CategoryId ?? string.Empty, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase),
-            "series" => (await client.GetSeriesAsync(provider, null, cancellationToken).ConfigureAwait(false))
-                .GroupBy(s => s.CategoryId ?? string.Empty, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase),
-            _ => (await client.GetLiveStreamsAsync(provider, null, cancellationToken).ConfigureAwait(false))
-                .GroupBy(s => s.CategoryId ?? string.Empty, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase)
         };
 
         return categories
@@ -285,7 +274,7 @@ public class CatalogService
             {
                 Id = c.Id!,
                 Name = c.Name ?? c.Id!,
-                ItemCount = counts.TryGetValue(c.Id!, out var count) ? count : 0
+                ItemCount = 0
             })
             .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();

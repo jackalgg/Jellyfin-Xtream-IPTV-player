@@ -1,20 +1,19 @@
 ---
 name: "StreamFin IPTV"
 guid: "cdf3b2f9-ba0b-41f1-8ebc-e340588673ab"
-version: "1.0.4.0"
+version: "1.0.6.0"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 owner: "jackalgg"
-overview: "Xtream Codes and M3U IPTV for Jellyfin that actually plays movies and series."
+overview: "Paste an Xtream or M3U link and watch it immediately."
 description: >
-  StreamFin connects an Xtream Codes panel or an M3U playlist and turns it into
-  ordinary Jellyfin Live TV plus real movie and series libraries. Films and shows
-  play through StreamFin the way a regular IPTV player would: the right User-Agent,
-  Referer, redirect following, and a walk of container extensions when the panel
-  advertised the wrong one.
+  StreamFin plays an Xtream Codes panel or an M3U playlist like an IPTV player.
+  Open a category and the title starts. Copying the catalog into Jellyfin
+  libraries is optional.
 category: "LiveTV"
 changelog: >
-  Save and start confirms the save, then creates Live TV and the libraries.
+  Watch lists a category and plays it on click. Saving no longer imports the
+  whole catalog.
 artifacts:
   - "Jellyfin.Plugin.StreamFin.dll"
 imageUrl: ""

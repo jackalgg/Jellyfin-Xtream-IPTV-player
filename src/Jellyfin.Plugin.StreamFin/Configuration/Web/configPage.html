@@ -134,8 +134,8 @@
                 <h2 class="sectionTitle">StreamFin IPTV</h2>
                 <p class="sfMuted">
                     Paste the link your provider sent, or type the server, username, and password.
-                    Save and start. Live TV, films, and shows are created for you. Films and shows
-                    are real Jellyfin libraries, so they play, resume, and show Next Up.
+                    Save, then open Watch. Categories load from the provider and a title plays when
+                    you click it. Nothing is copied into libraries unless you ask for that below.
                 </p>
             </div>
 
@@ -144,6 +144,9 @@
                 <div id="sfStatus" class="sfStatus"></div>
                 <div id="sfStatusDetail"></div>
                 <div class="sfActions">
+                    <button is="emby-button" type="button" id="sfOpenWatch" class="emby-button raised button-submit">
+                        <span>Watch</span>
+                    </button>
                     <button is="emby-button" type="button" id="sfSyncNow" class="emby-button raised">
                         <span>Sync now</span>
                     </button>
@@ -168,6 +171,17 @@
 
                 <details class="verticalSection">
                     <summary class="sectionTitle">Library and sync</summary>
+
+                    <label class="checkboxContainer">
+                        <input is="emby-checkbox" class="emby-checkbox" type="checkbox" id="sfImportLibraries" />
+                        <span>Copy the catalog into Jellyfin libraries</span>
+                    </label>
+                    <div class="fieldDescription checkboxFieldDescription">
+                        Leave this off. Watch plays straight from the provider, one category at a time.
+                        Turning this on copies every film and episode into libraries, which is slow and
+                        can stall the server. Turn it on only when you want those libraries, then choose
+                        Sync now.
+                    </div>
 
                     <div class="inputContainer">
                         <label class="inputLabel inputLabelUnfocused" for="sfLibraryRoot">
@@ -314,11 +328,11 @@
 
                 <div>
                     <button is="emby-button" type="submit" class="emby-button raised button-submit block">
-                        <span>Save and start</span>
+                        <span>Save</span>
                     </button>
                     <div class="fieldDescription">
-                        Saves these settings, creates the Live TV tuner and the film and show libraries,
-                        then starts the first sync.
+                        Saves these settings. Open Watch to play. Library copy runs only when that
+                        option is checked.
                     </div>
                     <div id="sfSaveResult"></div>
                 </div>

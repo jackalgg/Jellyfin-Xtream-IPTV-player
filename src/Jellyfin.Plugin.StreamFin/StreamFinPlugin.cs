@@ -44,7 +44,7 @@ public class StreamFinPlugin : BasePlugin<PluginConfiguration>, IHasWebPages
 
     /// <inheritdoc />
     public override string Description =>
-        "Streams IPTV from Xtream Codes panels and M3U playlists: Live TV with a full guide, plus real movie and series libraries.";
+        "Plays Xtream Codes and M3U like an IPTV player. Open a category and stream it. Copying the catalog into libraries is optional.";
 
     /// <summary>
     /// Gets the directory the generated <c>.strm</c> and <c>.nfo</c> files are written to.
@@ -93,6 +93,35 @@ public class StreamFinPlugin : BasePlugin<PluginConfiguration>, IHasWebPages
         {
             Name = "configPage.js",
             EmbeddedResourcePath = prefix + "configPage.js"
+        };
+
+        yield return new PluginPageInfo
+        {
+            Name = "StreamFinWatch",
+            EmbeddedResourcePath = prefix + "playerPage.html",
+            DisplayName = "Watch",
+            EnableInMainMenu = true,
+            MenuSection = "server",
+            MenuIcon = "play_arrow"
+        };
+
+        yield return new PluginPageInfo
+        {
+            Name = "playerPage.js",
+            EmbeddedResourcePath = prefix + "playerPage.js"
+        };
+
+        // Bundled so playback does not depend on a CDN or a dashboard script policy.
+        yield return new PluginPageInfo
+        {
+            Name = "streamfin-hls.js",
+            EmbeddedResourcePath = prefix + "streamfin-hls.js"
+        };
+
+        yield return new PluginPageInfo
+        {
+            Name = "streamfin-mpegts.js",
+            EmbeddedResourcePath = prefix + "streamfin-mpegts.js"
         };
     }
 

@@ -121,7 +121,8 @@ public class StreamFinPlaybackController : ControllerBase
         {
             var body = await upstream.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             var playlistUrl = upstream.RequestMessage?.RequestUri?.ToString() ?? parsed.UpstreamUrl ?? string.Empty;
-            var rewritten = _playback.RewritePlaylist(provider, body, playlistUrl);
+            var requestPath = Request.PathBase.ToUriComponent() + Request.Path.ToUriComponent();
+            var rewritten = _playback.RewritePlaylist(provider, body, playlistUrl, requestPath);
 
             Response.StatusCode = StatusCodes.Status200OK;
             Response.ContentType = "application/vnd.apple.mpegurl";

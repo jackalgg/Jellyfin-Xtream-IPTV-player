@@ -92,6 +92,14 @@ public sealed class SyncService : IDisposable
         var providers = CatalogService.GetEnabledProviders();
         var state = new SyncState { LastSyncUtc = DateTime.UtcNow };
 
+        if (!options.ImportLibraries)
+        {
+            _logger.LogInformation("Library import is off; Watch plays from the provider without copying the catalog");
+            state.LastSyncSucceeded = true;
+            progress?.Report(100);
+            return state;
+        }
+
         if (providers.Count == 0)
         {
             _logger.LogInformation("No StreamFin providers are enabled; nothing to sync");

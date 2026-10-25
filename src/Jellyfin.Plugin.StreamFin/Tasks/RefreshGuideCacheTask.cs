@@ -48,6 +48,13 @@ public class RefreshGuideCacheTask : IScheduledTask
     /// <inheritdoc />
     public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
     {
+        var options = StreamFinPlugin.Instance?.Configuration ?? new Configuration.PluginConfiguration();
+        if (!options.ImportLibraries)
+        {
+            progress.Report(100);
+            return;
+        }
+
         var providers = CatalogService.GetEnabledProviders();
         if (providers.Count == 0)
         {
@@ -87,10 +94,6 @@ public class RefreshGuideCacheTask : IScheduledTask
     /// <inheritdoc />
     public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
     {
-        yield return new TaskTriggerInfo
-        {
-            Type = TaskTriggerInfoType.IntervalTrigger,
-            IntervalTicks = TimeSpan.FromHours(6).Ticks
-        };
+        return Array.Empty<TaskTriggerInfo>();
     }
 }

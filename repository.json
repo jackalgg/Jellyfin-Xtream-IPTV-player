@@ -2,8 +2,8 @@
   {
     "guid": "cdf3b2f9-ba0b-41f1-8ebc-e340588673ab",
     "name": "StreamFin IPTV",
-    "description": "Paste your Xtream link. Live TV, films, and shows are set up for you, and films and shows actually play.",
-    "overview": "Xtream Codes and M3U for Jellyfin. Live TV with a guide, plus real movie and series libraries.",
+    "description": "Paste an Xtream or M3U link and watch it immediately. Library import is optional.",
+    "overview": "Xtream Codes and M3U for Jellyfin. Open a category and play it, the way an IPTV player does.",
     "owner": "jackalgg",
     "category": "LiveTV",
     "versions": [
@@ -54,6 +54,22 @@
         "sourceUrl": "https://github.com/jackalgg/Jellyfin-Xtream-IPTV-player/releases/download/v1.0.4/streamfin-iptv_1.0.5.0.zip",
         "checksum": "1afeb2929ae2a3fe4ac5c9778425aa30",
         "timestamp": "2026-10-25T12:06:29Z"
+      },
+      {
+        "version": "1.0.6.0",
+        "changelog": "Jellyfin 10.11. Watch plays a category on click. Saving no longer imports the whole catalog.",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/jackalgg/Jellyfin-Xtream-IPTV-player/releases/download/v1.0.6/streamfin-iptv_1.0.6.0.zip",
+        "checksum": "bd8ea2e0cb1e102339808ad3f9dcd0a8",
+        "timestamp": "2026-10-25T12:47:07Z"
+      },
+      {
+        "version": "1.0.7.0",
+        "changelog": "Jellyfin 12. Watch plays a category on click. Saving no longer imports the whole catalog.",
+        "targetAbi": "12.0.0.0",
+        "sourceUrl": "https://github.com/jackalgg/Jellyfin-Xtream-IPTV-player/releases/download/v1.0.6/streamfin-iptv_1.0.7.0.zip",
+        "checksum": "c452e284473a83f47b1d800f3985b5a8",
+        "timestamp": "2026-10-25T12:47:07Z"
       }
     ]
   }

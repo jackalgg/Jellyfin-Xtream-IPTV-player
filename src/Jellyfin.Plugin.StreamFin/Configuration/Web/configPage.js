@@ -30,6 +30,7 @@ const GLOBAL_FIELDS = [
     { id: 'sfLibraryRoot', key: 'LibraryRoot', type: 'text' },
     { id: 'sfSyncIntervalHours', key: 'SyncIntervalHours', type: 'int' },
     { id: 'sfGuideDays', key: 'GuideDays', type: 'int' },
+    { id: 'sfImportLibraries', key: 'ImportLibraries', type: 'bool' },
     { id: 'sfAutoProvision', key: 'AutoProvision', type: 'bool' },
     { id: 'sfWriteNfoMetadata', key: 'WriteNfoMetadata', type: 'bool' },
     { id: 'sfEnableInternetMetadata', key: 'EnableInternetMetadata', type: 'bool' },
@@ -427,7 +428,7 @@ export default function (view) {
         empty.className = 'sfEmpty';
         empty.setAttribute('data-sf-empty', '');
         empty.innerHTML = '<p>No subscription yet.</p>'
-            + '<p class="sfMuted">Add one, paste the provider link, then choose Save and start.</p>';
+            + '<p class="sfMuted">Add one, paste the provider link, then choose Save and open Watch.</p>';
         providerList.appendChild(empty);
     }
 
@@ -461,7 +462,7 @@ export default function (view) {
         const detail = view.querySelector('#sfStatusDetail');
 
         if (status.IsSyncRunning) {
-            setResult(detail, true, 'A sync is running. Watch its progress on the Scheduled Tasks page.');
+            setResult(detail, true, 'A library copy is still running. Restart Jellyfin to stop it. Watch does not need it.');
             return;
         }
 
@@ -471,7 +472,7 @@ export default function (view) {
         }
 
         if (!status.LastSyncUtc) {
-            setResult(detail, true, 'Nothing has synced yet. Save your settings, then choose Sync now.');
+            setResult(detail, true, 'Nothing has been copied into libraries. Open Watch to play.');
             return;
         }
 
@@ -601,19 +602,25 @@ export default function (view) {
     }
 
     function saveAndStart() {
+        const copyLibraries = view.querySelector('#sfImportLibraries').checked;
         return save().then((response) => {
-            showProgress('Saved ' + plural(response.ProviderCount, 'subscription')
-                + '. Creating Live TV and the libraries...');
-            return post('Provision');
-        }).then((response) => postNoContent('Sync').then(() => {
-            showSaveResult(
-                response.Success && asList(response.Warnings).length === 0,
-                describeProvision(response).map((line) => '<div>' + line + '</div>').join(''));
-            return loadStatus();
-        })).catch(() => {
+            const saved = 'Saved ' + plural(response.ProviderCount, 'subscription') + '. ';
+            if (!copyLibraries) {
+                showSaveResult(true, saved + 'Open Watch to play. Nothing is copied into libraries.');
+                return loadStatus();
+            }
+
+            showProgress(saved + 'Copying the catalog into libraries...');
+            return post('Provision').then((provision) => postNoContent('Sync').then(() => {
+                showSaveResult(
+                    provision.Success && asList(provision.Warnings).length === 0,
+                    describeProvision(provision).map((line) => '<div>' + line + '</div>').join(''));
+                return loadStatus();
+            }));
+        }).catch(() => {
             const result = view.querySelector('#sfSaveResult');
             if (!result.querySelector('.sfBad')) {
-                showSaveResult(false, 'Setup could not be finished. Test the connection, then try Save and start again.');
+                showSaveResult(false, 'The settings could not be saved. Test the connection, then try Save again.');
             }
         });
     }
@@ -649,19 +656,34 @@ export default function (view) {
 
     view.querySelector('#sfRefreshStatus').addEventListener('click', loadStatus);
 
+    view.querySelector('#sfOpenWatch').addEventListener('click', () => {
+        Dashboard.navigate(Dashboard.getPluginUrl('StreamFinWatch'));
+    });
+
     view.querySelector('#sfSyncNow').addEventListener('click', () => {
         // Save first: a sync reads the stored settings, so syncing with unsaved edits on screen
         // would quietly use the old ones.
-        save().then(() => postNoContent('Sync').then(() => {
-            setResult(
-                view.querySelector('#sfProvisionResult'),
-                true,
-                'The sync is queued. It runs as the StreamFin library sync task, where you can follow '
-                + 'its progress and cancel it.');
-            return loadStatus();
-        }, () => {
-            setResult(view.querySelector('#sfProvisionResult'), false, 'The sync could not be queued.');
-        }));
+        const copyLibraries = view.querySelector('#sfImportLibraries').checked;
+        save().then(() => {
+            if (!copyLibraries) {
+                setResult(
+                    view.querySelector('#sfProvisionResult'),
+                    true,
+                    'Saved. Library copy is off, so nothing is imported. Open Watch to play.');
+                return;
+            }
+
+            return postNoContent('Sync').then(() => {
+                setResult(
+                    view.querySelector('#sfProvisionResult'),
+                    true,
+                    'The library copy is queued. It runs as the StreamFin library sync task, where you can follow '
+                    + 'its progress and cancel it.');
+                return loadStatus();
+            }, () => {
+                setResult(view.querySelector('#sfProvisionResult'), false, 'The library copy could not be queued.');
+            });
+        });
     });
 
     view.querySelector('#sfProvision').addEventListener('click', () => {

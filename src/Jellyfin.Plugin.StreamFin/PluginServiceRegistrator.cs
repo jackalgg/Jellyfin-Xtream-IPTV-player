@@ -50,6 +50,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<PlaybackLinkFactory>();
         serviceCollection.AddSingleton<PlaybackService>();
         serviceCollection.AddSingleton<CatalogService>();
+        serviceCollection.AddSingleton<BrowseService>();
         serviceCollection.AddSingleton<XmltvCache>();
         serviceCollection.AddSingleton<LibraryWriter>();
         serviceCollection.AddSingleton<LibraryProvisioner>();

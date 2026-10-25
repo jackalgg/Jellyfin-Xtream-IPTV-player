@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Watch</title>
+</head>
+<body>
+<div id="streamFinWatch" data-role="page" class="page type-interior pluginConfigurationPage"
+     data-controller="__plugin/playerPage.js">
+    <div data-role="content">
+        <div class="content-primary">
+            <style>
+                #streamFinWatch .sfw {
+                    color: #e8edf5;
+                    background: #0e1218;
+                    border-radius: 0.6em;
+                    min-height: 70vh;
+                    display: flex;
+                    flex-direction: column;
+                }
+
+                #streamFinWatch .sfwHead,
+                #streamFinWatch .sfwPlayer,
+                #streamFinWatch .sfwBody,
+                #streamFinWatch .sfwEmpty {
+                    padding: 0.9em 1em;
+                }
+
+                #streamFinWatch .sfwHead {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.75em;
+                    align-items: center;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                }
+
+                #streamFinWatch .sfwTitle {
+                    font-size: 1.25em;
+                    font-weight: 600;
+                    margin-right: auto;
+                }
+
+                #streamFinWatch .sfwSelect,
+                #streamFinWatch .sfwSearch {
+                    background: #171d28;
+                    color: #e8edf5;
+                    border: 1px solid rgba(255, 255, 255, 0.14);
+                    border-radius: 0.35em;
+                    padding: 0.45em 0.6em;
+                    font: inherit;
+                }
+
+                #streamFinWatch .sfwSearch {
+                    flex: 1 1 14em;
+                    min-width: 10em;
+                }
+
+                #streamFinWatch .sfwTabs {
+                    display: flex;
+                    gap: 0.35em;
+                }
+
+                #streamFinWatch .sfwTab,
+                #streamFinWatch .sfwBtn,
+                #streamFinWatch .sfwCat,
+                #streamFinWatch .sfwCard,
+                #streamFinWatch .sfwEpisode {
+                    font: inherit;
+                    color: inherit;
+                    cursor: pointer;
+                }
+
+                #streamFinWatch .sfwTab,
+                #streamFinWatch .sfwBtn {
+                    background: #171d28;
+                    border: 1px solid rgba(255, 255, 255, 0.14);
+                    border-radius: 0.35em;
+                    padding: 0.4em 0.8em;
+                }
+
+                #streamFinWatch .sfwTab.sfwOn,
+                #streamFinWatch .sfwBtn.sfwPrimary {
+                    background: #2f6fed;
+                    border-color: #2f6fed;
+                }
+
+                #streamFinWatch .sfwPlayer {
+                    background: #07090d;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                }
+
+                #streamFinWatch .sfwPlayer[hidden],
+                #streamFinWatch .sfwEmpty[hidden],
+                #streamFinWatch .sfwBody[hidden],
+                #streamFinWatch .sfwGrid[hidden],
+                #streamFinWatch .sfwMore[hidden],
+                #streamFinWatch .sfwEpisodes[hidden] {
+                    display: none;
+                }
+
+                #streamFinWatch video {
+                    width: 100%;
+                    max-height: 42vh;
+                    background: #000;
+                    border-radius: 0.35em;
+                }
+
+                #streamFinWatch .sfwNow {
+                    margin-top: 0.45em;
+                    font-weight: 500;
+                }
+
+                #streamFinWatch .sfwError {
+                    color: #ffb4b4;
+                    margin-top: 0.35em;
+                }
+
+                #streamFinWatch .sfwBody {
+                    display: flex;
+                    gap: 1em;
+                    align-items: flex-start;
+                    flex: 1 1 auto;
+                }
+
+                #streamFinWatch .sfwCats {
+                    flex: 0 0 15em;
+                    max-height: 70vh;
+                    overflow: auto;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.25em;
+                }
+
+                #streamFinWatch .sfwCat {
+                    text-align: left;
+                    background: transparent;
+                    border: 0;
+                    border-radius: 0.3em;
+                    padding: 0.45em 0.6em;
+                }
+
+                #streamFinWatch .sfwCat.sfwOn,
+                #streamFinWatch .sfwCat:hover {
+                    background: rgba(47, 111, 237, 0.28);
+                }
+
+                #streamFinWatch .sfwMain {
+                    flex: 1 1 auto;
+                    min-width: 0;
+                }
+
+                #streamFinWatch .sfwStatus {
+                    opacity: 0.75;
+                    margin-bottom: 0.7em;
+                }
+
+                #streamFinWatch .sfwGrid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(9.5em, 1fr));
+                    gap: 0.75em;
+                }
+
+                #streamFinWatch .sfwCard {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.35em;
+                    background: #171d28;
+                    border: 2px solid transparent;
+                    border-radius: 0.4em;
+                    padding: 0.4em;
+                    text-align: left;
+                }
+
+                #streamFinWatch .sfwCard.sfwOn {
+                    border-color: #2f6fed;
+                }
+
+                #streamFinWatch .sfwPoster {
+                    width: 100%;
+                    aspect-ratio: 2 / 3;
+                    object-fit: cover;
+                    border-radius: 0.25em;
+                    background: #0b0e14;
+                }
+
+                #streamFinWatch .sfwPoster.sfwLogo {
+                    aspect-ratio: 16 / 10;
+                    object-fit: contain;
+                    background: #0b0e14;
+                }
+
+                #streamFinWatch .sfwName {
+                    font-size: 0.92em;
+                    line-height: 1.3;
+                }
+
+                #streamFinWatch .sfwMeta {
+                    opacity: 0.7;
+                    font-size: 0.8em;
+                }
+
+                #streamFinWatch .sfwMore {
+                    margin-top: 1em;
+                }
+
+                #streamFinWatch .sfwEpisode {
+                    display: flex;
+                    gap: 0.75em;
+                    width: 100%;
+                    text-align: left;
+                    background: #171d28;
+                    border: 0;
+                    border-radius: 0.35em;
+                    padding: 0.55em 0.7em;
+                    margin-bottom: 0.35em;
+                }
+
+                #streamFinWatch .sfwEpisode.sfwOn {
+                    outline: 2px solid #2f6fed;
+                }
+
+                #streamFinWatch .sfwSeason {
+                    margin: 0.8em 0 0.35em;
+                    font-weight: 600;
+                }
+
+                #streamFinWatch .sfwPlot {
+                    opacity: 0.8;
+                    margin: 0.4em 0 0.8em;
+                }
+
+                @media (max-width: 52em) {
+                    #streamFinWatch .sfwBody {
+                        flex-direction: column;
+                    }
+
+                    #streamFinWatch .sfwCats {
+                        flex-basis: auto;
+                        max-height: 12em;
+                        width: 100%;
+                    }
+                }
+            </style>
+
+            <div class="sfw">
+                <div class="sfwHead">
+                    <div class="sfwTitle">Watch</div>
+                    <select class="sfwSelect" id="sfwProvider" aria-label="Subscription"></select>
+                    <div class="sfwTabs" id="sfwTabs">
+                        <button type="button" class="sfwTab sfwOn" data-content="live">Live</button>
+                        <button type="button" class="sfwTab" data-content="movies">Films</button>
+                        <button type="button" class="sfwTab" data-content="series">Shows</button>
+                    </div>
+                    <input class="sfwSearch" id="sfwSearch" type="search" placeholder="Search this category" aria-label="Search this category" />
+                    <button type="button" class="sfwBtn" id="sfwSettings">Settings</button>
+                </div>
+
+                <div class="sfwPlayer" id="sfwPlayer" hidden>
+                    <video id="sfwVideo" controls playsinline></video>
+                    <div class="sfwNow" id="sfwNow"></div>
+                    <div class="sfwError" id="sfwError"></div>
+                </div>
+
+                <div class="sfwEmpty" id="sfwEmpty" hidden></div>
+
+                <div class="sfwBody" id="sfwBody">
+                    <div class="sfwCats" id="sfwCats"></div>
+                    <div class="sfwMain">
+                        <div class="sfwStatus" id="sfwStatus"></div>
+                        <div class="sfwGrid" id="sfwGrid"></div>
+                        <div class="sfwEpisodes" id="sfwEpisodes" hidden></div>
+                        <button type="button" class="sfwBtn sfwMore" id="sfwMore" hidden>More</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

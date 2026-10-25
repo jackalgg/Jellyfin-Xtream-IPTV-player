@@ -113,6 +113,28 @@ public class PlaybackLinkFactory
     {
         ArgumentNullException.ThrowIfNull(provider);
 
+        var relative = BuildRelativePlayUrl(provider, kind, streamId, upstreamUrl, container);
+        return string.Create(CultureInfo.InvariantCulture, $"http://127.0.0.1:{GetLocalHttpPort()}{relative}");
+    }
+
+    /// <summary>
+    /// Builds a signed play path the browser can open on this Jellyfin server.
+    /// </summary>
+    /// <param name="provider">The owning provider.</param>
+    /// <param name="kind">The stream kind.</param>
+    /// <param name="streamId">The stream identifier within the provider.</param>
+    /// <param name="upstreamUrl">The original upstream address.</param>
+    /// <param name="container">The advertised container extension.</param>
+    /// <returns>A path and query beginning with <see cref="PlayPathPrefix"/>.</returns>
+    public string BuildRelativePlayUrl(
+        ProviderOptions provider,
+        PlaybackKind kind,
+        string streamId,
+        string? upstreamUrl,
+        string? container)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+
         var normalizedContainer = StreamUrlCandidates.NormalizeExtension(container);
         var payload = PlaybackSigner.BuildPayload(kind, provider.Id, streamId, normalizedContainer, upstreamUrl);
         var signature = PlaybackSigner.Sign(GetKey(), payload);
@@ -136,7 +158,7 @@ public class PlaybackLinkFactory
 
         return string.Create(
             CultureInfo.InvariantCulture,
-            $"http://127.0.0.1:{GetLocalHttpPort()}{PlayPathPrefix}{kind.ToString().ToLowerInvariant()}/{Uri.EscapeDataString(provider.Id)}/{idSegment}?{string.Join('&', query)}");
+            $"{PlayPathPrefix}{kind.ToString().ToLowerInvariant()}/{Uri.EscapeDataString(provider.Id)}/{idSegment}?{string.Join('&', query)}");
     }
 
     /// <summary>

@@ -44,19 +44,8 @@ public class SyncLibrariesTask : IScheduledTask
     /// <inheritdoc />
     public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
     {
-        var options = StreamFinPlugin.Instance?.Configuration ?? new PluginConfiguration();
-        var hours = Math.Clamp(options.SyncIntervalHours, 1, 24 * 7);
-
-        yield return new TaskTriggerInfo
-        {
-            Type = TaskTriggerInfoType.IntervalTrigger,
-            IntervalTicks = TimeSpan.FromHours(hours).Ticks
-        };
-
-        // Catch up on anything that changed while the server was down.
-        yield return new TaskTriggerInfo
-        {
-            Type = TaskTriggerInfoType.StartupTrigger
-        };
+        // No schedule. A startup import of a full IPTV catalog is what stalls the server.
+        // Library copy runs only when someone turns it on and chooses Sync now.
+        return Array.Empty<TaskTriggerInfo>();
     }
 }

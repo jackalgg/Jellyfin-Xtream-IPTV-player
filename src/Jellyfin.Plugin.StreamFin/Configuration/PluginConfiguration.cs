@@ -32,6 +32,16 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool AutoProvision { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value indicating whether the whole catalog is copied into Jellyfin libraries.
+    /// </summary>
+    /// <remarks>
+    /// Off by default. Copying every film and episode into a library is what makes setup crawl and
+    /// stall. The Watch page plays straight from the provider, the way a normal IPTV player does,
+    /// and only asks the panel for the category you open.
+    /// </remarks>
+    public bool ImportLibraries { get; set; }
+
+    /// <summary>
     /// Gets or sets the interval in hours between automatic catalog syncs.
     /// </summary>
     public int SyncIntervalHours { get; set; } = 12;

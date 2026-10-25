@@ -145,8 +145,9 @@ public class PlaybackService
     /// <param name="provider">The owning provider.</param>
     /// <param name="playlist">The playlist body.</param>
     /// <param name="playlistUrl">The address the playlist was fetched from, used to resolve relative URIs.</param>
+    /// <param name="requestPath">The path of this playlist request, including any base path, such as <c>/StreamFin/Play/live/provider/1</c>. Segment links are written relative to it so they stay on whatever host served the playlist.</param>
     /// <returns>The rewritten playlist.</returns>
-    public string RewritePlaylist(ProviderOptions provider, string playlist, string playlistUrl)
+    public string RewritePlaylist(ProviderOptions provider, string playlist, string playlistUrl, string? requestPath)
     {
         ArgumentNullException.ThrowIfNull(provider);
         ArgumentNullException.ThrowIfNull(playlist);
@@ -162,29 +163,81 @@ public class PlaybackService
         string? line;
         while ((line = reader.ReadLine()) is not null)
         {
-            if (line.Length == 0 || line.StartsWith('#'))
+            if (line.Length == 0)
             {
-                builder.Append(line);
                 builder.Append('\n');
                 continue;
             }
 
-            var absolute = Uri.TryCreate(baseUri, line.Trim(), out var resolved)
-                ? resolved.ToString()
-                : line.Trim();
+            if (line.StartsWith('#'))
+            {
+                builder.Append(RewriteTagUris(provider, baseUri, requestPath, line));
+                builder.Append('\n');
+                continue;
+            }
 
-            var proxied = _links.BuildPlayUrl(
-                provider,
-                PlaybackKind.Url,
-                "x",
-                absolute,
-                StreamUrlCandidates.GetExtension(absolute));
-
-            builder.Append(proxied);
+            builder.Append(ProxyMediaUrl(provider, baseUri, requestPath, line.Trim()));
             builder.Append('\n');
         }
 
         return builder.ToString();
+    }
+
+    private string RewriteTagUris(ProviderOptions provider, Uri baseUri, string? requestPath, string line)
+    {
+        const string Marker = "URI=\"";
+        var searchFrom = 0;
+        var result = new StringBuilder(line.Length + 64);
+
+        while (true)
+        {
+            var start = line.IndexOf(Marker, searchFrom, StringComparison.OrdinalIgnoreCase);
+            if (start < 0)
+            {
+                result.Append(line.AsSpan(searchFrom));
+                return result.ToString();
+            }
+
+            var valueStart = start + Marker.Length;
+            var end = line.IndexOf('"', valueStart);
+            if (end < 0)
+            {
+                result.Append(line.AsSpan(searchFrom));
+                return result.ToString();
+            }
+
+            result.Append(line.AsSpan(searchFrom, start - searchFrom));
+            result.Append(line.AsSpan(start, Marker.Length));
+            result.Append(ProxyMediaUrl(provider, baseUri, requestPath, line[valueStart..end]));
+            result.Append('"');
+            searchFrom = end + 1;
+        }
+    }
+
+    private string ProxyMediaUrl(ProviderOptions provider, Uri baseUri, string? requestPath, string reference)
+    {
+        if (reference.Contains(PlaybackLinkFactory.PlayPathPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return reference;
+        }
+
+        var absolute = Uri.TryCreate(baseUri, reference, out var resolved)
+            ? resolved.ToString()
+            : reference;
+
+        var playPath = _links.BuildRelativePlayUrl(
+            provider,
+            PlaybackKind.Url,
+            "x",
+            absolute,
+            StreamUrlCandidates.GetExtension(absolute));
+
+        if (string.IsNullOrEmpty(requestPath))
+        {
+            return playPath;
+        }
+
+        return PlaylistPaths.RelativeTo(requestPath, playPath);
     }
 
     /// <summary>

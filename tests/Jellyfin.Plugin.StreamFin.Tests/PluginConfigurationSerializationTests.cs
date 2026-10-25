@@ -42,6 +42,26 @@ public class PluginConfigurationSerializationTests
         Assert.Equal(new[] { "12", "99" }, provider.MovieFilter.Categories);
         Assert.Equal(new[] { "XXX" }, provider.MovieFilter.TitleExcludePatterns);
         Assert.True(round.ProxyPlayback);
+        Assert.False(round.ImportLibraries);
+    }
+
+    [Fact]
+    public void Old_settings_without_ImportLibraries_stay_off()
+    {
+        const string xml = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <PluginConfiguration>
+              <AutoProvision>true</AutoProvision>
+              <Providers />
+            </PluginConfiguration>
+            """;
+
+        var serializer = new XmlSerializer(typeof(PluginConfiguration));
+        using var reader = XmlReader.Create(new StringReader(xml), new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit });
+        var config = (PluginConfiguration)serializer.Deserialize(reader)!;
+
+        Assert.False(config.ImportLibraries);
+        Assert.True(config.AutoProvision);
     }
 
     [Fact]
