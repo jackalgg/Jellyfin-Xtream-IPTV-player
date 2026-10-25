@@ -1,6 +1,6 @@
 # StreamFin IPTV
 
-StreamFin is a player for Xtream Codes and M3U in Jellyfin. Paste the link from your own provider, open a category, and watch live TV, films, and series.
+StreamFin is a player for Xtream Codes and M3U in Jellyfin. Enter your Xtream username and password, or paste an M3U playlist, then open a category and watch live TV, films, and series.
 
 Titles stream from that provider. Copying the catalog into Jellyfin libraries is optional and off unless you turn it on.
 
@@ -8,7 +8,7 @@ Titles stream from that provider. Copying the catalog into Jellyfin libraries is
 
 StreamFin is only a player. It does not provide, host, or sell channels, streams, playlists, films, or series. It includes no subscription and no content of its own.
 
-You bring the Xtream or M3U link from your own provider. You are responsible for that account, for complying with the law and with your provider's terms, and for having the right to watch what you play.
+You enter your own Xtream username and password, or you paste your own M3U playlist. You are responsible for that account, for complying with the law and with your provider's terms, and for having the right to watch what you play.
 
 ## Requirements
 
@@ -32,17 +32,14 @@ The catalog installs the build that matches the server.
 6. Open the **Catalog** tab.
 7. Under **Live TV**, choose **StreamFin IPTV** and click **Install**.
 8. Restart Jellyfin.
+9. Open **Dashboard → StreamFin IPTV**.
+10. Add your own provider:
+    - **Xtream Codes:** enter the server address, your username, and your password.
+    - **M3U:** paste the playlist URL.
+11. Choose **Save**.
+12. Choose **Watch**.
 
 ## Watch
-
-1. Open **Dashboard → StreamFin IPTV**.
-2. Paste the link your provider sent. These all work:
-   - `http://example.com:8080/get.php?username=...&password=...`
-   - `http://example.com:8080/player_api.php?username=...&password=...`
-   - an M3U playlist URL
-3. The server, username, and password fill in from an Xtream link. You can type those three fields yourself instead.
-4. Choose **Save**.
-5. Choose **Watch**.
 
 Open a category, then click a title.
 
