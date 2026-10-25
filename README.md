@@ -40,14 +40,6 @@ StreamFin creates the Live TV tuner, the guide, and the movie and series librari
 
 Library files are written inside Jellyfin's data folder. Leave **Generated library folder** blank unless you want them somewhere else.
 
-## Build from source
-
-```bash
-dotnet build Jellyfin.Plugin.StreamFin.sln -c Release
-```
-
-`net9.0` is for Jellyfin 10.11. `net10.0` is for Jellyfin 12.
-
 ## License
 
 MIT. See [LICENSE](LICENSE).

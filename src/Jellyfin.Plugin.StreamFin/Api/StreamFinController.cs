@@ -162,6 +162,7 @@ public class StreamFinController : ControllerBase
     {
         var state = await _stateStore.LoadAsync(cancellationToken).ConfigureAwait(false);
         var options = StreamFinPlugin.Instance?.Configuration ?? new PluginConfiguration();
+        var providers = options.Providers ?? Array.Empty<ProviderOptions>();
 
         return new StatusResponse
         {
@@ -171,8 +172,8 @@ public class StreamFinController : ControllerBase
             LastError = state.LastError,
             Providers = state.Providers,
             LibraryRoot = StreamFinPlugin.Instance?.GetLibraryRoot() ?? string.Empty,
-            ConfiguredProviderCount = options.Providers.Count,
-            EnabledProviderCount = options.Providers.Count(p => p.Enabled)
+            ConfiguredProviderCount = providers.Length,
+            EnabledProviderCount = providers.Count(p => p.Enabled)
         };
     }
 

@@ -12,7 +12,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>
     /// Gets or sets the configured IPTV subscriptions.
     /// </summary>
-    public IReadOnlyList<ProviderOptions> Providers { get; set; } = Array.Empty<ProviderOptions>();
+    /// <remarks>
+    /// This has to be an array. Jellyfin persists plugin settings with <c>XmlSerializer</c>, which
+    /// refuses interface types such as <c>IReadOnlyList&lt;T&gt;</c> and answers the settings page
+    /// with a save error.
+    /// </remarks>
+    public ProviderOptions[] Providers { get; set; } = Array.Empty<ProviderOptions>();
 
     /// <summary>
     /// Gets or sets the directory the generated <c>.strm</c> and <c>.nfo</c> files are written to.

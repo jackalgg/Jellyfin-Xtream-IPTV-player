@@ -44,13 +44,17 @@ public class CategoryFilter
     /// <summary>
     /// Gets or sets the provider category identifiers this filter applies to.
     /// </summary>
-    public IReadOnlyList<string> Categories { get; set; } = Array.Empty<string>();
+    /// <remarks>
+    /// An array, rather than <c>IReadOnlyList&lt;string&gt;</c>, because this object is stored in
+    /// the plugin's XML configuration and <c>XmlSerializer</c> cannot write interface types.
+    /// </remarks>
+    public string[] Categories { get; set; } = Array.Empty<string>();
 
     /// <summary>
     /// Gets or sets regular expressions matched against item titles. A title matching any of them
     /// is dropped regardless of its category.
     /// </summary>
-    public IReadOnlyList<string> TitleExcludePatterns { get; set; } = Array.Empty<string>();
+    public string[] TitleExcludePatterns { get; set; } = Array.Empty<string>();
 
     /// <summary>
     /// Gets or sets the maximum number of items imported per category, or 0 for no limit.
@@ -65,12 +69,13 @@ public class CategoryFilter
     /// <returns><c>true</c> when the category should be imported.</returns>
     public bool AllowsCategory(string? categoryId, string? categoryName)
     {
-        if (Mode == FilterMode.All || Categories.Count == 0)
+        var categories = Categories ?? Array.Empty<string>();
+        if (Mode == FilterMode.All || categories.Length == 0)
         {
             return Mode != FilterMode.Include;
         }
 
-        var listed = Categories.Any(c =>
+        var listed = categories.Any(c =>
             string.Equals(c, categoryId, StringComparison.OrdinalIgnoreCase)
             || string.Equals(c, categoryName, StringComparison.OrdinalIgnoreCase));
 
@@ -84,12 +89,13 @@ public class CategoryFilter
     /// <returns><c>true</c> when the title should be imported.</returns>
     public bool AllowsTitle(string? title)
     {
-        if (string.IsNullOrWhiteSpace(title) || TitleExcludePatterns.Count == 0)
+        var patterns = TitleExcludePatterns ?? Array.Empty<string>();
+        if (string.IsNullOrWhiteSpace(title) || patterns.Length == 0)
         {
             return true;
         }
 
-        foreach (var pattern in TitleExcludePatterns)
+        foreach (var pattern in patterns)
         {
             if (string.IsNullOrWhiteSpace(pattern))
             {
